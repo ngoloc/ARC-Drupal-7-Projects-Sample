@@ -1,0 +1,6 @@
+name = misc
+description = miscellaneous module
+package = Autumn
+core = 7.x
+ 
+files[] = misc.module

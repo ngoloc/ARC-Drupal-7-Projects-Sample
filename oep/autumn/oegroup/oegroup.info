@@ -1,0 +1,6 @@
+name = oegroup
+description = oegroup module
+package = Autumn
+core = 7.x
+ 
+files[] = oegroup.module

@@ -1,0 +1,72 @@
+<?php
+
+//not implements hook_node_submit
+
+//function oep_autolinks_node_submit($node, $form, &$form_state){
+
+
+
+//implements hook_node_view
+function oep_autolinks_node_view($node, $view_mode, $language){
+	if($node->type != 'article') return;
+	
+	$sql = "select nid, title from node where type = 'article' and status = 1";
+	$results = db_query($sql);
+	
+	$body = $node->body['und'][0]['value'];
+	foreach($results as $record){
+	$regex = "/" . preg_quote($record->title) . "/i";
+	$replace = "<a href='/node/" . $record->nid . "'>".  $record->title . "</a>";
+	$body = preg_replace($regex, $replace, $body);}
+	//print($body);
+	
+	drupal_add_js(drupal_get_path('module', 'oep_autolinks') . '/libs/orbit-1.2.3/jquery-1.5.1.min.js');
+	drupal_add_js(drupal_get_path('module', 'oep_autolinks') . '/libs/orbit-1.2.3/jquery.orbit-1.2.3.min.js');
+	drupal_add_js(drupal_get_path('module', 'oep_autolinks') . '/scripts/article-slideshow.js');
+	drupal_add_css(drupal_get_path('module', 'oep_autolinks') . '/libs/orbit-1.2.3/orbit-1.2.3.css');
+	drupal_add_css(drupal_get_path('module', 'oep_autolinks') . '/css/article-slideshow.css');
+	$display_media = array();
+	$imageslider = '<div id="slide_show"><div id="featured">';	
+	
+	$sql =  "SELECT *
+			FROM {article_media}
+			WHERE nid = $node->nid
+			ORDER BY nuid
+			";
+	$results = db_query($sql)->fetchAll();
+	
+	if(count($results)==0)
+	 	$imageslider .= '<img height="250px" width="300px" src="' . file_create_url(drupal_get_path('module', 'oep_autolinks') . '/images/No_Image.png') . '"  alt="HTML Captions" />';
+	
+	foreach($results as $media){
+// 		// if filemime type is image
+// 		if(isset($media) && is_array($media) ){
+// 			foreach($media as $media_item){
+// 				if(is_array($media_item) && isset($media_item['filemime'])){
+// 					if(preg_match('@^image@', $media_item['filemime'])){
+						// load file from fid
+						//dpm($media_item, "MEDIA");
+		$split_extension = explode('.',$media->uri);
+		$file_extension = strtolower($split_extension[count($split_extension)-1]);
+		if(in_array($file_extension,array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif')))
+			$imageslider .= '<img height="250px" width="300px" src="' . file_create_url($media->uri) . '"  alt="HTML Captions" />';
+		else{
+			$imageslider .= //'<img height="250px" width="300px" src="' . file_create_url(drupal_get_path('module', 'oep_autolinks') . '/images/No_Image.png') . '"  alt="HTML Captions" />';
+				'<video width="300px" height="250px" controls>
+				<source src="' . file_create_url($media->uri) . '" type="video/mp4">
+				<source src="' . file_create_url($media->uri) . '" type="video/ogg">
+				Your browser does not support the video tag.
+				</video>';
+		}
+// 					}
+// 				}
+// 			}
+	
+			//@Feature: add function to handle video
+	
+// 		}
+	}
+	$imageslider .= '</div></div> <!-- .slides, .node-slide-wrap -->';
+	$node->content['body'][0]['#markup'] = $imageslider . $body;
+}
+

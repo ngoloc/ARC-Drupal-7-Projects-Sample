@@ -1,0 +1,6 @@
+name = topicmgr
+description = topic administrating module
+package = Autumn
+core = 7.x
+ 
+files[] = topicmgr.module

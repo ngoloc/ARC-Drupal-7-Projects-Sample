@@ -1,0 +1,4 @@
+name = "OEP Autolinks"
+description = "Changes text in article node's which contani articel titles into links to associated content"
+core = 7.x
+ 

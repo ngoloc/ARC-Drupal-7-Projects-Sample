@@ -1,0 +1,79 @@
+<?php
+include_once "group.inc";
+
+	function oegroup_menu(){
+	  $items = array();
+	  $items['mypages/group_list'] = array(
+	    'title' => 'Groups',
+	    'page callback'    => 'oegroup_output',
+	    'access arguments' => array('access content'),
+        'file' => 'oegroup_output.inc',
+        'access callback' => 'oep_access',
+        'access arguments' => array('oep_group'),
+	  	'weight' => 9,
+	  	'type' => MENU_LOCAL_TASK,
+	  );
+      
+      $items['mypages/group_add'] = array(
+        'title' => t('Editorial Group Add'),
+        'description' => 'Webpage for adding new group',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('groupaf'),
+      	'access callback' => 'oep_access',
+        'access arguments' => array('oep_group'),
+        'file' => 'groupaf.inc',
+      	'type' => MENU_LOCAL_TASK,
+      );
+      
+      $items['mypages/group_edit'] = array(
+        'title' => 'Editorial Group Edit',
+	    'page callback'    => 'groupedit',
+        'access callback' => 'oep_access',
+        'access arguments' => array('oep_group'),
+      	'file' => 'groupedit.inc',
+      	'type' => MENU_LOCAL_TASK,
+      );
+
+	$items['mypages/group_delete'] = array(
+        'title' => 'Editorial Group Delete',
+            'page callback'  => 'groupdelete',
+        'access callback' => 'oep_access',
+        'access arguments' => array('oep_group'),
+        'file' => 'groupdelete.inc',
+        'type' => MENU_LOCAL_TASK,
+      );
+
+      
+	  return $items;
+	}
+	
+	function oegroup_menu_local_tasks_alter(&$data, $router_item, $root_path){
+		$i = 0;
+		foreach($data['tabs'][0]['output'] as $tab)
+		{
+			switch($tab['#link']['title']){
+				case 'Editorial Group Add':
+					$data['tabs'][0]['output'][$i] = array('#active' => false);
+					break;
+				case 'Editorial Group Edit':
+					$data['tabs'][0]['output'][$i] = array('#active' => false);
+					break;
+			}
+			$i++;
+		}
+	}
+	
+	function oep_access($op) {
+	  global $user;
+	  $access = FALSE;
+	  
+	  switch($op){
+	    case 'oep_group':
+		    if (in_array('administrator', array_values($user->roles)) || in_array('editorial coordinator', array_values($user->roles)))
+		        $access = TRUE;
+		    break;
+	  }
+	  return $access;
+	}
+	
+?>

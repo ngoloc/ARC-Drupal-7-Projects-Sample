@@ -1,0 +1,9 @@
+#slide_show{
+float:right;
+display:block;
+vertical-align:middle;
+padding: 5px 5px 5px 5px;
+margin: 0px 0px 20px 20px;
+background-color:#222222;
+border-radius: 5px 5px 5px 5px;
+}

@@ -1,0 +1,71 @@
+<?php
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+ini_set('display_errors', 1);
+
+include_once "../topicservice.inc";
+
+function misc_menu(){
+	  $items = array();
+	   
+      $items['ajax_callback'] = array(
+	    'title' => 'My callback',
+	    'page callback' => 'oep_ajax_callback',
+	  	'file' => 'ajax_callback.inc',
+	    'access arguments' => array('access content'),
+	    'type' => MENU_CALLBACK,
+	  );
+	  
+	  return $items;
+}
+
+//function misc_node_view($node, $view_mode, $langcode) {
+//  update node vid to latest revision
+//  $sql = "SELECT body_value FROM field_revision_body
+//		  WHERE revision_id = (select max(revision_id) from field_revision_body where entity_id = $node->nid)";
+//  $result = db_query($sql);
+//  $record = $result->fetchObject();
+//  $node->content['body'][0]["#markup"] = $record->body_value;
+//}
+
+function misc_node_update($node) {
+	global $user;
+	//redirect article state change
+	//no state draft
+	if($node->type == 'article' && $node->workbench_moderation_state_current == 'published' && $node->workbench_moderation_state_new =='draft')
+		$node->workbench_moderation_state_new = 'published';
+	
+	if(in_array('author', array_values($user->roles)) && $node->type == 'article' &&
+			($node->workbench_moderation_state_new=='assigned_entry' || $node->workbench_moderation_state_new=='in_progress')){
+		$node->workbench_moderation_state_new = 'in_progress';
+	}
+}
+
+function misc_workbench_moderation_transition($node, $previous_state, $new_state) {
+	//need to trigger for some transition
+	if($node->type == 'article'){
+		if($new_state == "withdrawn_from_author"){
+			$topic_id = $node->field_associated_topic['und'][0]['target_id'];
+			//update field_data_field_final_state
+			$query = db_update('topicmgr_final_state')
+			->condition('entity_id', $topic_id)
+			->fields(array('state' => 'Returned'))
+			->execute();
+		}
+	
+		$oep_util = new OepUtil();
+		if($new_state=="reviewer_assigned")
+			$oep_util->markAllIncompleteReviewers($node->nid);
+	
+		//deadline modification
+		if(isset($node->field_deadline[LANGUAGE_NONE][0]['value'])){
+			if($previous_state != $new_state) {
+				$node->field_deadline[LANGUAGE_NONE][0]['value'] += 30*24*3600;
+				field_attach_update('node', $node);
+			}
+			
+		}
+	}
+
+}
+
+?>

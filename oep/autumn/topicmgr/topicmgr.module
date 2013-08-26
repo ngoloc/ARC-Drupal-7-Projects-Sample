@@ -1,0 +1,228 @@
+<?php
+	error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+    ini_set('display_errors', 1);
+	
+    include_once drupal_get_path("module", "misc") . "/oeputil.inc";
+	
+	function topicmgr_menu(){
+	  $items = array();
+
+	  $items['mypages/topics'] = array(
+	  		'title' => 'Topics',
+	  		'description' => 'Menu system example using a render array.',
+	  		'file' => 'topiclist.inc',
+	  		'page callback' => 'topiclist',
+	  		'access callback' => 'get_oep_page_access',
+	  		'access arguments' => array('by-state'),
+	  		'weight' => 10,
+	  		'type' => MENU_LOCAL_TASK,
+	  );
+	  
+	  $items['mypages/topics/assign-topics'] = array(
+	  		'type' => MENU_DEFAULT_LOCAL_TASK,
+	  		'title' => 'Assign Topics',
+	  		'access callback' => 'get_oep_page_access',
+	  		'access arguments' => array('by-state'),
+	  		'weight' => 1,
+	  );
+	  
+	  $items['mypages/topics/browse-topics'] = array(
+	  		'title' => 'Browse Topics',
+	  		'description' => 'Demonstrating secondary tabs.',
+	  		'file' => 'browsetopics.inc',
+	  		'page callback' => 'browsetopics',
+	  		'access callback' => 'get_oep_page_access',
+	  		'access arguments' => array('by-state'),
+	  		'type' => MENU_LOCAL_TASK,
+	  		'weight' => 2,
+	  );
+
+      $items['mypages/topics/create-topics'] = array(
+            'title' => 'Create New Topic',
+            'description' => 'Demonstrating secondary tabs.',            
+            'access callback' => 'get_oep_page_access',
+            'access arguments' => array('by-state'),
+            'type' => MENU_LOCAL_TASK,
+            'weight' => 3,
+      );
+
+      $items['mypages/topics/email-template-trigger'] = array(
+         	'title' => 'Trigger Email Template',
+         	'description' => 'trigger email template for button click on topics management',
+      		'page callback' => 'drupal_get_form',
+      		'page arguments' => array('trigger_email_template'),
+         	'access callback' => 'get_oep_page_access',
+         	'access arguments' => array('by-state'),
+         	'type' => MENU_LOCAL_TASK,
+         	'weight' => 4,
+      );
+	  
+      $items['mypages/author_topic_assignment'] = array(
+      	'title' => t('Assign Author'),
+        'description' => 'Webpage for choosing an author for a topic',
+        'page callback' => 'drupal_get_form',
+      	'page arguments' => array('author_topic_assgmt'),
+        'access callback' => 'get_oep_page_access',
+	  	'access arguments' => array('by-state'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'author_topic_assgmt.inc',
+      );
+	  
+	  $items['mypages/topic_manager'] = array(
+        'title'            => t('Topic Management'),
+        'description' => 'Webpage for managing a topic',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('topic_management'),
+        'access callback' => 'get_oep_page_access',
+        'access arguments' => array('by-state'),
+        'type' => MENU_LOCAL_TASK,
+        'file' => 'topic_management.inc',
+      );
+	  
+	  return $items;
+	}
+	
+	function topicmgr_menu_local_tasks_alter(&$data, $router_item, $root_path){
+		$i = 0;
+		foreach($data['tabs'][0]['output'] as $tab)
+		{
+			switch($tab['#link']['title']){
+				case 'Assign Author':
+					$data['tabs'][0]['output'][$i] = array('#active' => false);
+					break;
+				case 'Topic Management':
+					$data['tabs'][0]['output'][$i] = array('#active' => false);
+					break;
+			 
+                              }
+			$i++;
+		}
+                
+        // change 'create new topic' menu link to 'node/add/topic'
+        foreach($data['tabs'][1]['output'] as $sectab)
+        {	
+           if($sectab['#link']['title'] == 'Create New Topic')
+	      		$data['tabs'][1]['output'][2]['#link']['href'] = 'node/add/topic';
+        }	
+}
+
+
+//	function topicmgr_form_alter(&$form, $form_state, $form_id) {
+//		if ($form_id == 'topic_node_form') {
+// 			$form['#submit'] = array_merge(array('topicmgr_submit_handler'), $form['#submit']);
+//			$form['#validate'] = array_merge(array('topicmgr_validate_handler'), $form['#validate']);
+//		}
+//	}
+	
+// 	function topicmgr_submit_handler($form, &$form_state) {
+// 		dpm($form_state);
+// 	}
+
+//	function topicmgr_validate_handler($form, &$form_state) {
+//		$form_state['values']['title'] = trim($form_state['values']['title']);
+//		$oep_util = new OepUtil();
+//		if($oep_util->topic_title_existed($form_state['values']['title']))
+//			form_set_error('title','Topic Title ' . $form_state['values']['title'] . ' is already in use.');
+//	}
+	
+	function topicmgr_node_view($node, $view_mode = 'full') {
+	  if ($node->type=='topic' && $view_mode == 'full') {
+		  $oep_util = new OepUtil(); 
+		  $node->content['state'] = array('#prefix' => ' <div class="field field-name-field-theme field-type-taxonomy-term-reference field-label-above clearfix" style="margin-top:20px"><div class="field-label">State: &nbsp ' . $oep_util->get_final_state($node->nid) . '</div></div>',);
+	  }
+	}
+	
+	function topicmgr_node_insert($node){
+	  if($node->type=='topic'){
+	    $oep_util = new OepUtil();
+	    $oep_util->init_state($node->nid);
+	  }
+	}
+	
+	function match($haystack,$needle){
+	  if($needle == '')
+	  	return true;
+	  $pos = strpos(strtolower($haystack),strtolower($needle));
+	  if($pos === false)
+		return false;
+	  return true;
+	}
+
+	/*
+	 * Email Template Trigger Implementation for Topics
+	 * Binding button-click action on Author-Topic Management with email template
+	 */
+	function trigger_email_template(){
+		$form = array();
+		$sql = "SELECT name
+				FROM {pets}";
+		$result = db_query($sql);
+		
+		$arr = $result->fetchAll();
+
+		$select_arr = array('' => '');
+		foreach($arr as $et)
+			$select_arr[$et->name] = $et->name;
+		
+		$form['selected']['author_invited'] = array(
+			'#type' => 'select',
+			'#title' => t('Author invited'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('author_invited_pet',''),
+		);
+		
+		$form['selected']['agree_to_write'] = array(
+			'#type' => 'select',
+			'#title' => t('Agree to write'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('agree_to_write_pet',''),
+		);
+		
+		$form['selected']['declined_rejected'] = array(
+			'#type' => 'select',
+			'#title' => t('Declined/Rejected'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('declined_rejected_pet',''),
+		);
+		
+		$form['selected']['1st_reminder'] = array(
+			'#type' => 'select',
+			'#title' => t('1st Reminder'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('1st_reminder_pet',''),
+		);
+		
+		$form['selected']['2nd_reminder'] = array(
+			'#type' => 'select',
+			'#title' => t('2nd Reminder'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('2nd_reminder_pet',''),
+		);
+		
+		$form['selected']['3rd_reminder'] = array(
+			'#type' => 'select',
+			'#title' => t('3rd Reminder'),
+			'#options' => $select_arr,
+			'#default_value' => variable_get('3rd_reminder_pet',''),
+		);		
+		
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#submit' => array('update_topic_pet_trigger'), // If no javascript action.
+			'#value' => t('Apply'),
+		);
+		
+		return $form;
+	}
+	
+	function update_topic_pet_trigger($form, &$form_state) {
+		variable_set('author_invited_pet',$form_state['values']['author_invited']);
+		variable_set('agree_to_write_pet',$form_state['values']['agree_to_write']);
+		variable_set('declined_rejected_pet',$form_state['values']['declined_rejected']);
+		variable_set('1st_reminder_pet',$form_state['values']['1st_reminder']);
+		variable_set('2nd_reminder_pet',$form_state['values']['2nd_reminder']);
+		variable_set('3rd_reminder_pet',$form_state['values']['3rd_reminder']);
+		drupal_set_message('Settings have been updated');
+	}
+	
+?>

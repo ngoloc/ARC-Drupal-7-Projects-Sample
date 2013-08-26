@@ -1,0 +1,60 @@
+div.reminder_unclicked{
+  cursor: pointer;
+  border:1px solid;
+  text-align: center;
+  vertical-align: middle;
+  padding-top:15px;
+  width: 100px;
+  height: 40px;
+}
+
+div.reminder_date{
+  height: 30px;
+  width: 100px;
+  font-size: 80%;
+}
+
+div.note {
+background-color:white;
+border:thin inset gray;
+display:block;
+font-size:x-small;
+margin:3px;
+padding:3px;
+}
+
+div.add_note {
+ margin-top: 10px;
+ margin-left: 5px;
+ margin-bottom: 5px;
+ background-image:url(http://www.research.pdx.edu/dev/oep/sites/all/modules/autumn/topicmgr/images/add-button.gif); 
+ height:15px;
+ width:15px;
+ cursor: pointer;
+}
+
+div.edit_note {
+ cursor: pointer;
+ float: right;
+ background-image:url(http://www.research.pdx.edu/dev/oep/sites/all/modules/autumn/topicmgr/images/Pencil.png);
+ height:15px;
+ width:15px;
+}
+
+div.note_skin {
+    background-color: #517693;
+    border: 1px solid #D3D3D3;
+    color: #555555;
+    font-weight: normal;
+}
+
+.index_span {
+	display: inline-block;
+	width: 30px;
+	color: navy;
+	cursor: pointer;
+}
+
+div.jqx-grid-cell{
+   padding-left:4px;
+}

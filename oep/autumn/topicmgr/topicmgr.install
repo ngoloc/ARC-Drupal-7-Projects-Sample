@@ -1,0 +1,122 @@
+<?php
+/**
+ * Implementation of hook_schema()
+ */
+function topicmgr_schema(){
+  $schema = array();
+  $schema['topicmgr_note_topic_author'] = array(
+    'description' => 'store notes for the topic',
+    'fields' => array(
+      'note_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Note Id',
+      ),
+      'topic_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'what topic does this note belong to?',
+      ),
+      'author_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'what author is this note sent to',
+      ),
+      'date_taken' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Date this note is taken',
+      ),
+      'commenter' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'User wrote this note',
+      ),
+      'note_content' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+        'description' => 'note content',
+      ),
+    ),
+    'primary key' => array('note_id'),
+  );
+  
+  $schema['topicmgr_states'] = array(
+    'description' => 'store the state of topic',
+    'fields' => array(
+      'entity_id' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Entity Id',
+      ),
+      'state' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => FALSE,
+        'description' => 'state of the topic',
+      ),
+      'author' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'The author assigned for this topic',
+      ),
+      'reminder1' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Reminder 1',
+      ),
+      'reminder2' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Reminder 2',
+      ),
+      'reminder3' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'Reminder 3',
+      ),
+      'invited' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'check if invited',
+      ),
+      'sid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: sid',
+      ),
+      'w9onfile' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'w9',
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+  
+  $schema['topicmgr_final_state'] = array(
+    'description' => 'store the final states of topic',
+    'fields' => array(
+      'entity_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Topic Id',
+      ),
+      'state' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'description' => 'Final state of the topic',
+      ),
+      'first_author' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'The first author assigned for this topic',
+      ),
+    ),
+    'primary key' => array('entity_id'),
+  );
+  
+  return $schema;
+}

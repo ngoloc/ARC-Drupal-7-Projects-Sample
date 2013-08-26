@@ -1,0 +1,23 @@
+/* tables */
+
+table.sticky-enabled thead tr .header {
+	background-image: url(bg.gif);
+	background-repeat: no-repeat;
+	background-position: center right;
+	cursor: pointer;
+}
+
+table.sticky-enabled thead tr .headerSortUp {
+	background-image: url(asc.gif);
+}
+table.sticky-enabled thead tr .headerSortDown {
+	background-image: url(desc.gif);
+}
+
+table.sticky-enabled thead tr .headerSortDown, table.sticky-enabled thead tr .headerSortUp {
+	background-color: #8dbdd8;
+}
+
+table.sticky-enabled tr.deadline_row {
+	background-color: #FF6633;
+}
