@@ -1,0 +1,410 @@
+<?php
+
+/**
+ * Implement hook_menu
+ * 
+ */
+function oep_comments_menu(){
+  $items = array();
+  $items['admin/oep-comments/%node/%/discuss'] = array(
+    'page callback' => 'oep_comments_discuss',
+    'page arguments' => array(2,3), //nid , vid
+    'type' => MENU_CALLBACK,
+    'access callback' => 'oep_comments_access_control',
+    'access arguments' => array(2), 
+  );
+//  $items['admin/oep-comments/%node/%/%/discuss'] = array(
+//    'page callback' => 'oep_comments_reply_discus', // comment id input should be vancode
+//    'page arguments' => array(2,3,4), // nid, vid, vancode
+//    'type' => MENU_CALLBACK,
+//    'access callback' => 'oep_comments_access_control',
+//    'access arguments' => array(2),
+//  
+//  );
+  return $items;
+}
+/**
+ * Menu callback function
+ */
+function oep_comments_discuss($node, $vid){
+  //drupal_add_library('system', 'ui.draggable');
+  drupal_add_js(drupal_get_path('module', 'oep_comments') . '/js/high_lite.js', 'file');
+  drupal_add_js(drupal_get_path('module', 'oep_comments') . '/js/oep_comments.js', 'file');
+  drupal_add_js(drupal_get_path('module', 'topicmgr') . '/scripts/ajax.googleapis.com/jquery.min.js', 'file');
+  drupal_add_js(drupal_get_path('module', 'topicmgr') . '/scripts/ajax.googleapis.com/jquery-ui.min.js', 'file');
+  drupal_add_css(drupal_get_path('module', 'topicmgr') . '/css/base/jquery.ui.all.css', 'file');
+  
+  $nid = $node->nid;
+  if(empty($vid)){
+    $vid = $node->vid;
+  }
+  
+  $revisions = _oep_comments_load_body_revisions($node , $vid, true);
+  $output = $revisions;
+  
+  $output .= '<script>
+  					  var nid = '. $nid .';
+  					  var vid = '. $vid .';
+  			  </script>
+  			  <script src="' . drupal_get_path('module', 'oep_comments')  .'/js/oep_comments.js"></script>
+  			  ';
+  // add comment highlighting between words
+    // load correct comments
+//    $query = db_select('oep_comments', 'oec')
+//    ->fields('oec')
+//    ->condition('nid', $nid, '=')
+//    ->condition('vid', $vid, '=')
+//    ->orderBy('thread', 'ASC');
+//    
+//    $results = $query->execute() ->fetchAll();
+//    $comments = array();
+//    while($comment = $results->fetchAssoc()){
+//      $comments[] = $comment;
+//      
+//    }
+//    dpm($comments, 'Comment');
+//    if(isset($comments) && !empty($comments)){
+//        // display comment form
+//      $output .= theme('oep_comments', $comments);
+//      // @FIXME: what are you doing
+//      // create highlighting for words here 
+//      foreach($comments as $comment){
+//        // pass data to the front end to handle highlighting
+//      }
+//      $comment_last = end($comments);  
+//      $thread = (integer)($comment_last['thread']);
+//    }else $thread = 0;
+    
+//  $output .= drupal_render(drupal_get_form('oep_comments_form', $thread));
+  return $output;  
+}
+
+//function get_discuss(){
+//  $close_button = drupal_get_path('module', 'oep_comments') . '/images/taskbar_close.png';
+//  $save_comment = drupal_get_path('module', 'oep_comments') . '/images/save_comment.gif';
+//  $abort_comment = drupal_get_path('module', 'oep_comments') . '/images/abort_comment.gif';
+//  $output = <<<EOT
+//  <div id='discuss' class='draggable'>
+//	<div class='drag_box' id='discuss_drag'>Discuss<img src='$close_button' onclick='abortEdit();' /></div>
+//
+//	<form method='post' action='#'>
+//		<div id='parent_comment'></div>
+//
+//		<h5>Reply Subject</h5>
+//		<input type='text' id='reply_title' name='title' />
+//
+//		<h5>Enter reply here:</h5>
+//		<textarea name='comment_text' id="reply_text"></textarea>
+//
+//		<br/>
+//		<input type='button' name='submit' value='save reply' id='save' onclick='addReply();'/>
+//		<input type='button' name='abort' value='cancel' onclick='abortEdit();'/>
+//		<input type='hidden' name='sid' id='sid'/>
+//		<input type='hidden' name='comment_id' id='comment_id'/>
+//	</form>
+//</div>
+//<div id='comments' class='draggable'>
+//	<div class='drag_box' id='comments_drag'>Comments<img src='$close_button onclick='abortComment();' /></div>
+//
+//	<span id='comment_hide'>
+//		<textarea name='new_comment' id='new_comment'></textarea>
+//		<img id='save_comment' src='$save_comment' onclick='saveComment();' />
+//		<img id='abort_comment' src='$abort_comment' alt='Cancel' onclick='abortComment();' />
+//	</span>
+//
+//	<div id='comment_list'></div>
+//</div>
+//
+//
+//EOT;
+//
+//return $output;
+//}
+
+/**
+ * Implements hook_theme().
+ */
+
+/*
+ * Implementation of theme_oep_comments;
+// */
+//function theme_oep_comments($comments){
+//  // indent based on threading and only load the current vid comment
+//  
+//  // place a border around each div 
+//  // output user information in a div
+//  
+//  $output = '<div class="oep-comment-threads-wrapper"> ';
+//  foreach($comments as $comment){
+//    // @todo: need a wrapper to handle positioning 
+//    $output .= '<div class="oep-comment-thread-wrapper">';
+//    // user information 
+//    $uid = $comment[uid];
+//    $user = user_load($uid);
+//    $output .= '<div class="oep-comment-thread-user-info">' ;
+//    $output .= '<p>Author: '. $user->name . '</p>';
+//    $output .= '<p>Date: ' . date("D, d M Y", $comment['created']) . '</p>';
+//    $output .= '<p>Time: ' . date("H:i:s", $comment['created']) . '</p>';
+//    $output .= '</div> <!--.oep-comment-thread-user-info-->';
+//    
+//    $output .= '<div class="oep-coment-thread-body">';
+//    $output .= $comment['comment'];
+//    $output .= '</div></div><!-- .oep-comment-thread-body -- ><!--.oep-comment-thread-wrapper-->';
+//  }
+//  
+//  $output .= '</div> <!--.oep-comment-threads-wrapper-->';
+//  $output .= get_discuss();
+//  return $output;
+//}
+
+
+
+
+//function oep_comments_form($thread){
+//  $form = array();
+//  
+////  $form['subject'] = array(
+////    '#type' => 'textfield',
+////    '#title' => t('subject'),
+////    '#size' => 60,
+////    '#maxlength' => 128,
+////    '#required' => TRUE, 
+////  
+////  );
+//  $form['comment_body'] = array(
+//    '#type' => 'textarea',
+//    '#title' => t('Comment'),
+//  );
+//  $form['thread'] = array(
+//    '#type' => 'hidden',
+//    '#value' => $thread,
+//  );
+//  
+//  $form['action']['submit'] = array(
+//    '#type' => 'submit',
+//    '#value' => 'Save',
+//    '#submit' => 'oep_comments_form_submit',
+//  );
+//  return $form;
+//  
+//}
+//
+//function oep_comments_form_submit($form, &$form_state){
+//  // verify that the user input doesn't have html in it.  
+//  $body = check_plain($form_state['values']['comment_body']);
+// 
+//}
+
+
+
+/**
+ * access callback function 
+ */
+function oep_comments_access_control($node){
+  global $user;
+  $op = 'edit';
+  // access control is the same as that of edit form 
+  $perm = oep_article_access_node_access($node, $op, $user);
+  ($perm == 'allow')? TRUE:FALSE;
+  return $perm;
+    
+}
+/**
+ * Implement hook_module_implements_alter(&$implementations, $hook)
+ */
+function oep_comments_module_implements_alter(&$implementations, $hook){
+	if($hook == 'node_view'){
+		//unset($implementations['comment']);
+	}
+}
+
+/**
+ * Implement hook_form_alter(&$form, &$form_state, $form_id)
+ * 
+ */
+//function oep_comments_form_alter(&$form, &$form_state, $form_id){
+//  //$form_state['nid']
+//  if ($form_id == 'article_node_form'){
+//    //error_log('FORM NID ' . print_r($f, true));
+//    dsm($form, 'form');
+//    //dsm($form_state, 'Form state');
+//
+//    //error_log('NODE ' . $node->body[LANGUAGE_NONE][0]['safe_value']);
+//      
+//    // remove comments on node add
+//    if (isset($form['nid']['#value']) && !empty($form['nid']['#value'])){
+//      // load node obj
+//      $nid = $form['nid']['#value'];
+//      $node = node_load($nid);
+//      $vid = $node->vid;
+//      //dsm ($node, 'node');      
+//      // load body from the node edit page 
+//
+//      // load comments associated with the node 
+//     // $oep_comments = oep_comments_load_comments($nid, $vid);
+//      $revisions = _oep_comments_load_body_revisions($node, $vid, false);      
+//      $form['oep_revisions'] = array(
+//        '#type' => 'markup',
+//        '#markup' => $revisions,
+//      );
+//      
+//    }
+//  }
+//}
+
+/**
+ * Implementation of hook_workbench_moderation_transition($node, $previous_state, $new_state) 
+ */
+function oep_comments_workbench_moderation_transition($node, $previous_state, $new_state){
+//  dsm ($previous_state, 'previous state');
+//  dsm ($node, 'NODE');
+//  dsm ($new_state, 'State');
+}
+
+
+
+/**
+ * Internal function to load all node revisions into 
+ */
+function _oep_comments_load_body_revisions($node, $vid, $discuss){
+  // load the all the body fields for this node
+  $nid = $node->nid;
+  $query = db_select('field_revision_body', 'frb')
+    ->fields('frb', array('revision_id', 'body_value'))
+    ->condition('entity_id', $nid)
+    ->orderBy('revision_id', 'DESC');
+    $results = $query->execute();
+    $records =  array();
+    
+  while($record = $results->fetchAssoc()){
+    $records[] = $record;
+  }
+  $current = $node->vid; 
+  $text = '';
+
+  // declare wrapper div
+  $text .= '<div id="edit-revisions" style="width:100%">';
+  $record = array();
+  $no_rev = count($records);
+    // display next and prev arrows
+    $text .= '<div class="edit-revisions-pager">';
+    if($no_rev > 1){
+      // only printing previous the rest will be through js
+      $text .= '<div class="prev-revision-wrapper"><a href="" class="prev-revision-arrow">Prev Rev</a> </div>';
+      $text .= '<div class="next-revision-wrapper"></div>';
+    }
+    $text .= '</div><!-- .edit-revisions-pager-->';
+    //@todo break up into two functions
+      //dsm($records, 'records');
+    $paragraphs = _generate_paragraphs_array($records, $current, $discuss);
+    foreach($paragraphs as $pos => $paragraph){
+      $display = ($pos == 0)?'display:block':'display:none';
+      $text .= '<div id="revision-body-content-wrapper-' .$pos . '" style ="' . $display . '">';
+      
+      $text .= '<div class="body-word-count">' . $paragraph['count'] . '</div>';
+      $text .= $paragraph['body'];
+      $text .= '</div>';
+    }
+
+  $text .= '</div> <!--.revision-body-content-wrapper--><!--#edit-revisions-->';  
+  $text .= '<div id="dialog" title="Article Comment" ></div>';
+  return $text;
+  
+}
+
+function _generate_paragraphs_array($records, $current, $discuss){
+
+  $content = array();
+  foreach($records as $pos => $record){
+    $text = '';
+    if($record['revision_id'] == $current){
+      $text .= '<div id="revision-body-content-current" class="revision-content" >';
+    }else 
+      $text .= '<div id="revision-body-content-' . $record['revision_id'] .'" class="revision-content" >';
+    
+      $paragraphs = preg_split('/<p>(.*?)<\/p>/', $record['body_value'], -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+      for ( $i = 0; $i < count ( $paragraphs ); $i++ ) {
+        $paragraphs[$i] = preg_split ( '/(<[^>]+>)|\s+/', $paragraphs[$i], -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY );
+      }
+      
+        $i = 0;
+        foreach ( $paragraphs as $para_key => $words ) {
+          $text .= "<p id='paragraph_" . $para_key . "'>";
+          foreach ( $words as $word_key => $word ) {
+           if ( $word != strip_tags( $word ) ) {
+             $text .= $word;
+             } else {
+               if (isset($discuss) && $discuss == true){
+                 $event = 'onclick = "word_click(this)"';
+               }else 
+                 $event = '';
+               $text .= "<span id='word_" . $i++ . "' " . $event . ">" . $word . " </span>";
+             }
+           }
+           $text .= "</p>";
+        }  
+
+        $text .= '</div><!--#revision-body-content- -->';
+        $content[$pos]['body'] = $text;
+        $content[$pos]['count'] = $i;  
+    }
+    return $content;
+
+}
+
+
+
+
+
+
+
+
+/**
+ * Implements hook_node_prepare().
+ */
+
+
+//function oep_comments_node_prepare($node) {
+//	global $user;
+//	//verify that comment is set
+//	
+//	$node->oep_comments = array();
+//	
+//  if (!isset($node->comment)) {
+//     $node->comment = variable_get("comment_$node->type", COMMENT_NODE_OPEN);
+//  }
+//  
+//  // @todo: remove this (AMIN)now add the comment form to the node object
+//  $node->oep_comments['comments'] = comment_node_page_additions($node);  
+//  
+////  dsm($node, "node");
+//  //@todo: add fine grained user access to comments 
+//  // these are specific to oep
+//  	if ((user_access('administer comments') ||  user_access('view comments')) && $node->comment_count ){
+//  	
+//  		//@todo: verify structure of $user object prior to doing this;
+//  		if (in_array('managing editor', $user->roles) || in_array('editor', $user->roles) || in_array('fact checker' , $user->roles) || in_array('editor in chief', $user->roles)){
+//  				// @todo: pull the data for node access for this user
+//  				  // get the current state of the article
+//  				  // switch ($user)
+//  				    // managing editor :current == New Topic || Assigned to Managing Editor
+//  				    
+//  				    // editor = :current == assign to editorial review group (must be member of) || 
+//  				    // (editorial review in progress must have initiated this state || total in progress or finished reviews < required reviews ) && must be a member of group
+//
+//  		        // EIC =: current == awaiting editors in chief review
+//  		        
+//  		        // Copy Editor
+//  		          // CE =: current == assign to copy editor.
+//  		        
+//  		  
+//  				
+//  				// verify that this author has access to the content
+//  				
+//  		}else if (in_array('editorial coordinator', $user->roles) || in_array('administrator', $user->roles)){
+//  			// 	display the $node comments on the edit page.
+//  			      $node->oep_comments['comments'] = comment_node_page_additions($node);
+//  		}
+//  	}
+//	// display comments and the forms associated with them
+//}

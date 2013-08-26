@@ -1,0 +1,16 @@
+@import url("jquery.ui.core.css");
+@import url("jquery.ui.resizable.css");
+@import url("jquery.ui.selectable.css");
+@import url("jquery.ui.accordion.css");
+@import url("jquery.ui.autocomplete.css");
+@import url("jquery.ui.button.css");
+@import url("jquery.ui.dialog.css");
+@import url("jquery.ui.slider.css");
+@import url("jquery.ui.tabs.css");
+@import url("jquery.ui.datepicker.css");
+@import url("jquery.ui.progressbar.css");
+
+.ui-widget {
+font-family:"Lucida Grande","Lucida Sans Unicode",Verdana,sans-serif;
+font-size:0.9em;
+}

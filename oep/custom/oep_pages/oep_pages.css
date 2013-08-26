@@ -1,0 +1,36 @@
+/* 
+    Document   : oep_pages.css
+    Created on : Oct 11, 2012, 3:14:44 AM
+    Author     : Amin_Lenovo
+    Description:
+        Purpose of the stylesheet follows.
+*/
+
+.tabs ul.tertiary {
+    border-bottom: medium none;
+    padding: 0.5em 0;
+    clear: both;
+}
+ul.tertiary {
+    margin: 5px;
+    
+}
+
+.tabs ul.tertiary li:first-child {
+    padding-left: 0;
+    
+}
+.tabs ul.tertiary li:last-child {
+    border-right: medium none;
+}
+
+.tabs ul.tertiary li{
+    display: block;
+    float: left;
+    padding: 0 1em;
+    
+}
+ul.tertiary li {
+    border-right: 1px solid #CCC;
+}
+

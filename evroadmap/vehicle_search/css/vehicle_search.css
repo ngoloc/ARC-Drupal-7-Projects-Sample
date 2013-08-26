@@ -1,0 +1,55 @@
+#page-title {
+	display: none;
+}
+
+.breadcrumb {
+	display:none;
+}
+
+.conditions_div {
+	background: url("../images/menu_bg.png") repeat left top; 
+	padding: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	margin-bottom:20px;
+}
+
+.leftpane_div {
+	float: left;
+	width: 225px;
+	margin-left: -30px;
+}
+
+.rightpane_div {
+	margin-left: 220px;
+	width: 700px;
+}
+
+.v_header {
+	text-align: center;
+	vertical-align: middle;
+	line-height: 1.5em;
+}
+
+.v_cell {
+	text-align: center;
+	vertical-align: middle;
+	line-height: 1.5em;
+	font-size: 11px;
+}
+
+.sub_additional_div {
+	padding-bottom:20px;
+	border-bottom:solid 1px navy;
+}
+
+.form-checkboxes .form-item, .form-radios .form-item {
+	margin-top: 0;
+	margin-bottom:0;
+}
+
+.even {
+	background: url("../images/menu_bg.png") repeat left top; 
+}
+
+#search_results_tbl tr:hover {cursor: pointer;}

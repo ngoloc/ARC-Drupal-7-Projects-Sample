@@ -1,0 +1,4 @@
+name = CK Editor Caption
+description = Enable to add image caption for News Post content
+core = 7.x
+

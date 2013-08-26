@@ -1,0 +1,7 @@
+; $Id$
+name = OEP: Build user pages
+description = Build user pages
+package = Build a Module
+core = 7.x
+files[] = oep_pages.module
+stylesheets[all][] = oep_pages.css

@@ -1,0 +1,139 @@
+<?php
+/**
+ * Implementation of hook_schema()
+ */
+function oep_comments_schema(){
+  $schema = array();
+  $schema['oep_comments'] = array(
+    'description' => 'Store editor comments',
+    'fields' => array(
+      'cid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Comment Id',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The {users}.uid who wrote the comment',
+      ),
+      'comment' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'The comment body.',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The time that the comment was created, as a unix timestamp.',
+      ),
+      'thid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'what thread does this comment belong to?',
+      ),
+    ),
+    'primary key' => array('cid'),
+  );
+  
+  $schema['oep_comments_threads'] = array(
+    'description' => 'Group comments by thread',
+    'fields' => array(
+      'thid' => array(
+        'description' => 'thread id',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'start' => array(
+        'description' => 'the 1st word in a comment',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'stop' => array(
+        'description' => 'the last word in a comment',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'what node id for this thread?',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'what revision id for this thread?',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('thid'),
+  );
+  
+  $schema['oep_review'] = array(
+    'description' => 'reviewers make comment, that should be checked to change the article state',
+    'fields' => array(
+      'rid' => array(
+        'description' => 'review id',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      
+      'uid' => array(
+        'description' => 'user id who make comments',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'what revision id for this review?',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'state' => array(
+        'description' => 'the review should be marked with state: complete or incomplete?',
+        'type' => 'varchar',
+        'length' => '20',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('rid'),
+  );
+  
+  $schema['article_comments'] = array(
+    'description' => 'comments for whole article',
+    'fields' => array(
+      'comment_id' => array(
+        'description' => 'comment id',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'what node id for this comment?',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'what revision id for this review?',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'user id who make this comment',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'content' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'The comment body.',
+      ),
+      'created' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'The time that the comment was created, as a unix timestamp.',
+      ),
+    ),
+    'primary key' => array('comment_id'),
+  );
+  return $schema;
+}

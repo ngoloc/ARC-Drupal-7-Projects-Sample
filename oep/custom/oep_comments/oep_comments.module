@@ -1,0 +1,289 @@
+<?php
+include_once drupal_get_path("module", "misc") . "/oeputil.inc";
+
+/**
+ * Implement hook_menu
+ * 
+ */
+function oep_comments_menu(){
+  $items = array();
+  $items['mypages/oep-comments/%/%/discuss'] = array(
+  	'title'            => t('Article Comments'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('oep_comments_discuss'),
+    'type' => MENU_LOCAL_TASK,  
+    'access arguments' => array('access content'), 
+  );
+
+  return $items;
+}
+/**
+ * Menu callback function
+ */
+function oep_comments_discuss(){
+  $nid = arg(2);
+  $vid = arg(3);
+  
+  if(!OepUtil::exist($nid,$vid)){
+  	$form['error'] = array(
+  			'#type' => 'markup',
+  			'#markup' => '<h3>The page you access is unvailable.</h3>',
+  	);
+  	return $form; 
+  }
+  if(!oep_comments_access_control($nid,$vid)){
+  	$form['error'] = array(
+  			'#type' => 'markup',
+  			'#markup' => '<h3>You are not authorized to access this page.</h3>',
+  	);
+  	return $form;
+  }
+  
+  //drupal_add_library('system', 'ui.draggable');
+  drupal_add_js(drupal_get_path('module', 'misc') . '/scripts/ajax.googleapis.com/jquery.min.js', 'file');
+  drupal_add_js(drupal_get_path('module', 'misc') . '/scripts/ajax.googleapis.com/jquery-ui.min.js', 'file');
+  drupal_add_js("sites/all/libraries/tinymce/jscripts/tiny_mce/tiny_mce.js", array('type' => 'file', 'preprocess' => false));
+  drupal_add_css(drupal_get_path('module', 'misc') . '/css/base/jquery.ui.all.css', 'file');
+  drupal_add_css(drupal_get_path('module', 'oep_comments') . '/oep_comments.css');
+  
+  
+  $node = node_load($nid);
+  if(empty($vid)){
+    $vid = $node->vid;
+  }
+  global $base_url;
+  
+  $revisions = _oep_comments_load_body_revisions($node , $vid, true);
+  $rev_data = OepUtil::get_revision_index($nid,$vid);
+
+  $output = '<h2 style="text-align:center">Comment/Discuss</h2>';
+  $output .= '<p>';
+  if($rev_data['prev_rev'] != NULL) {
+  	$output .= '<a href="' . base_path() . 'mypages/oep-comments/' . $nid . '/' . $rev_data['prev_rev'] . '/discuss';
+  	if($_GET['coor_view']==1)
+  		$output .= '?coor_view=1';
+  	$output .= '"><img id="prev_img" style="cursor: pointer;" src="' . base_path() . drupal_get_path('module', 'misc') . '/images/previous.png" height="15" width="15"/></a>';
+  }
+  $output .= '&nbspRevision:&nbsp' . $rev_data['current'] . '/' . $rev_data['rev_count'] . '&nbsp';
+  if($rev_data['next_rev'] != NULL) {
+  	$output .= '<a href="' . base_path() . 'mypages/oep-comments/' . $nid . '/' . $rev_data['next_rev'] . '/discuss';
+  	if($_GET['coor_view']==1)
+  		$output .= '?coor_view=1';
+  	$output .= '"><img id="next_img" style="cursor: pointer;" src="' . base_path() . drupal_get_path('module', 'misc') . '/images/next.png" height="15" width="15"/></a>'; 
+  }
+  $output .= '</p>';
+  
+  $output .= $revisions;
+
+  $output .= '
+  			  <script>
+  					  var nid = '. $nid .';
+  					  var vid = '. $vid .';
+  					  var ajax_url = "'. base_path() .'ajax_callback/";
+  					  var base_url = "'. base_path() .'";
+  					  var misc_url = "'. drupal_get_path('module', 'misc') .'";
+  			  </script>
+  			  <script src="'. base_path() . drupal_get_path('module', 'oep_comments') . '/js/oep_comments.js"></script>
+  			  ';
+   $form['comment_body'] = array(
+          '#type' => 'markup',
+          '#markup' => $output,
+          );
+
+   //if the commenter is fact checker, hide the submit button
+   global $user;
+
+   if(!in_array("fact checker", $user->roles) && !in_array("managing editor", $user->roles) && $_GET['coor_view']!=1)
+   {
+	   if($rev_data['current'] == $rev_data['rev_count'])
+		   $form['comment_submit'] = array(
+		          '#type' => 'submit',
+		          '#value' => t('Submit'),
+		          );
+   }
+   $images_root = base_path() . drupal_get_path('module', 'misc') . '/images/';
+   $form['article_comments'] = array(
+          '#type' => 'markup',
+          '#markup' => '<br/>
+          				<br/>
+          				<div style="border-top: solid 0.5px lightgray; padding-bottom: 5px; ">
+          					<h3>Comment:</h3>
+          					<br/>
+	          				<textarea name="content" id="leave_comments" style="width:100%;"></textarea>
+	          				<br/>
+	          				<button type="button" id="leave_comments_button" class="button-link" onclick="add_comment()">Leave your comments</button>
+	          				<img id="loading_seach_img" src="' . $images_root . 'loading.gif" width=20 height=20 style="margin-bottom:-10px; visibility:hidden"></img>
+	   						<div id="comments_div" style="padding-top: 20px; font-size:90%;">
+	          				</div>
+	          			</div>',
+          );
+   return $form;
+}
+
+function oep_comments_discuss_submit($form, $form_state) {
+	$nid = arg(2);
+	$vid = arg(3);
+	global $user;
+	$uid = $user->uid;
+	//if current state is eic_in_review, just change the state to needs_me_review
+	$node = node_load($nid,OepUtil::get_latest_revision($nid));
+	$node->workbench_moderation_state_current = $article_state;
+	$article_state = $node->workbench_moderation['current']->state;
+	if($article_state == 'eic_in_review') {
+	    $node->workbench_moderation_state_new = 'needs_me_review';
+	    node_save($node);
+	    drupal_set_message("The article is reviewed by Editor in Chief successfully. It advances to be reviewed by Managing Editor.");
+		drupal_goto("mypages");
+	}
+
+	$state = "complete";
+	$oep_util = new OepUtil();
+	$oep_util->update_oep_review($vid,$uid,$state);
+	drupal_set_message("Your review was submitted successfully");
+	//check if the number of submittors acquired
+	$minimum_required_reviewers = $node->field_required_review['und'][0]['value'];
+	if(intval($oep_util->get_number_of_complete_reviews($vid)) >= intval($minimum_required_reviewers))
+	{
+		$node->workbench_moderation_state_new = "review_completed";
+		node_save($node);
+	}
+	drupal_goto("mypages");
+}
+
+/**
+ * access callback function 
+ */
+function oep_comments_access_control($nid,$vid){
+  $oep_util = new OepUtil();
+  $node = node_load($nid);
+  global $user;
+  $uid = $user->uid;
+  $authorized_users = field_get_items('node', $node, 'field_editorial_review_group');
+  if(in_array('administrator', $user->roles) || in_array('editorial coordinator', $user->roles))
+  	if($_GET['coor_view']==1)
+  		return true;
+
+  //make sure the user hasn't submitted the review for the latest revision
+  if (validate_user($uid, $authorized_users) && !$oep_util->oep_review_completed_state($nid,$uid))
+  	return true;
+  	
+  //validate factchecker
+  if($oep_util->validate_factchecker($nid,$uid))
+    return true;
+  
+  //validate eic
+  if($oep_util->validate_eic($nid,$uid))
+  	  return true;
+
+  //validate me
+  if($oep_util->validate_me($nid,$uid))
+  	  return true;
+
+  return false;    
+}
+/**
+ * Implement hook_module_implements_alter(&$implementations, $hook)
+ */
+function oep_comments_module_implements_alter(&$implementations, $hook){
+	if($hook == 'node_view'){
+		//unset($implementations['comment']);
+	}
+}
+
+
+/**
+ * Internal function to load all node revisions into 
+ */
+function _oep_comments_load_body_revisions($node, $vid, $discuss){
+  // load the all the body fields for this node
+  $nid = $node->nid;
+  $query = db_select('field_revision_body', 'frb')
+    ->fields('frb', array('revision_id', 'body_value'))
+    ->condition('entity_id', $nid)
+    ->condition('revision_id', $vid)
+    ->orderBy('revision_id', 'DESC');
+    $results = $query->execute();
+    $records =  array();
+    
+  while($record = $results->fetchAssoc()){
+    $records[] = $record;
+  }
+  $current = $node->vid; 
+  $text = '';
+
+  // declare wrapper div
+  $text .= '<div id="edit-revisions" style="width:100%">';
+  $record = array();
+  $no_rev = count($records);
+  // display next and prev arrows
+  /*
+  $text .= '<div class="edit-revisions-pager">';
+  if($no_rev > 1){
+      // only printing previous the rest will be through js
+      $text .= '<div class="prev-revision-wrapper"><a href="" class="prev-revision-arrow">Prev Rev</a> </div>';
+      $text .= '<div class="next-revision-wrapper"></div>';
+  }
+  $text .= '</div><!-- .edit-revisions-pager-->';
+  */
+  //dsm($records, 'records');
+  drupal_set_message($paragraph['count']);
+  $paragraph = _generate_paragraphs_array($records, $vid, $discuss);
+
+  $display = 'display:block';
+  $text .= '<div id="revision-body-content-wrapper-0" style ="' . $display . '">';
+  $text .= '<h1>' . $node->title . '</h1>';
+  $text .= '<div style="color:navy; margin-bottom:30px;">Article Length:&nbsp' . $paragraph['count'] . '</div>';
+  $text .= $paragraph['body'];
+  $text .= '</div>';
+
+  $text .= '</div> <!--.revision-body-content-wrapper--><!--#edit-revisions-->';  
+  $text .= '<div id="dialog" title="Article Comment" ></div>
+  			<script>
+  				var wordcount = ' . $paragraph['count'] . ';
+  			</script>';
+  return $text;
+  
+}
+
+//Modified to get the current revision of the article
+function _generate_paragraphs_array($records, $current, $discuss){
+  $content = array();
+  $ret = 0;
+  foreach($records as $pos => $record){
+    $text = '';
+    if($record['revision_id'] == $current){
+      $text .= '<div id="revision-body-content-current" class="revision-content" >';
+      $ret = $pos;
+    }else 
+      $text .= '<div id="revision-body-content-' . $record['revision_id'] .'" class="revision-content" >';
+    
+    $paragraphs = preg_split('/<p>(.*?)<\/p>/', $record['body_value'], -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+    for ( $i = 0; $i < count ( $paragraphs ); $i++ ) {
+        $paragraphs[$i] = preg_split ( '/(<[^>]+>)|\s+/', $paragraphs[$i], -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY );
+    }
+      
+    $i = 0;
+    foreach ( $paragraphs as $para_key => $words ) {
+          $text .= "<p id='paragraph_" . $para_key . "'>";
+          foreach ( $words as $word_key => $word ) {
+           if ( $word != strip_tags( $word ) ) {
+             $text .= $word;
+             } else {
+               if (isset($discuss) && $discuss == true){
+                 $event = 'onclick = "word_click(this)"';
+               }else 
+                 $event = '';
+               $text .= "<span id='word_" . $i . "' " . $event . "style='background-color: rgba(0, 0, 0, 0); visibility:hidden'>" . $word . " </span><input id='wordhid_". $i ."' type='hidden'></input>";
+               $i++;
+             }
+           }
+           $text .= "</p>";
+    }  
+
+    $text .= '</div><!--#revision-body-content- -->';
+    $content[$pos]['body'] = $text;
+    $content[$pos]['count'] = $i;
+  }
+  return $content[$ret];
+}
+

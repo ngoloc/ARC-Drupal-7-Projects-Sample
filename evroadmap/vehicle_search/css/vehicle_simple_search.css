@@ -1,0 +1,27 @@
+#ev_simple_search {
+	width:370px;
+	padding:10px 10px 10px 10px; 
+	background-color: rgb(170,230,230); 
+	border-radius: 10px; 
+	display: inline-block;
+}
+
+.toggle_on {
+	display:table-cell;
+	width:100px;
+	height:30px;
+	background-color: rgb(125,125,130);
+	text-align: center;
+	vertical-align:middle;
+	cursor: pointer;
+}
+
+.toggle_off {
+	display:table-cell;
+	width:100px;
+	height:30px;
+	background-color:rgb(195,195,195);
+	text-align: center;
+	vertical-align:middle;
+	cursor: pointer;
+}

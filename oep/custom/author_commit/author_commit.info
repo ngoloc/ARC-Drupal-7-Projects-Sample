@@ -1,0 +1,6 @@
+name = author commit
+description = author's agreement to submit their work
+package = Build a Module
+core = 7.x
+ 
+files[] = author_commit.module

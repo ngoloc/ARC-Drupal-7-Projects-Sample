@@ -1,0 +1,6 @@
+name = media browser
+description = media browser module
+package = Build a Module
+core = 7.x
+ 
+files[] = media_browser.module

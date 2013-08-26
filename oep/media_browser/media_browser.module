@@ -1,0 +1,120 @@
+<?php
+
+// function media_browser_js_alter(&$javascript) {
+// 	// Swap out jQuery to use an updated version of the library.
+// 	$javascript['misc/jquery.js']['data'] = drupal_get_path('module', 'jquery_update') . '/jquery.js';
+// }
+
+function media_browser_form_article_node_form_alter(&$form, $form_state, $form_id) {
+  	$form['#attached']['js'] = array(
+  			'/misc/ui/jquery.ui.dialog.min.js',
+  			drupal_get_path('module', 'misc') . '/scripts/json2.js',
+  			drupal_get_path('module', 'media_browser') . '/scripts/media_browser.js' => array('type' => 'file', 'preprocess' => false),
+  			'var delete_icon_url = "' . base_path() . drupal_get_path('module', 'topicmgr') . '/images/delete_icon.png";' => array('type' => 'inline', 'preprocess' => false),
+  			drupal_get_path('module', 'media_browser') . '/scripts/media_browser.js' => array('type' => 'file', 'preprocess' => false),
+  	);
+  	$form['#attached']['css'] = array(
+  			drupal_get_path('module', 'misc') . '/css/base/jquery.ui.all.css'	
+  	);
+  	unset($form['field_media']);
+	$form['media_selector'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Media'),
+		'#weight' => 5,
+		'#collapsible' => TRUE,
+		'#collapsed' => FALSE,	
+	);
+		
+	$ret = array();
+	$id = 0;
+	
+	if(isset($form['nid']['#value'])) {
+		$nid = $form['nid']['#value'];
+		$sql =  "SELECT *
+				 FROM {article_media}
+				 WHERE nid = $nid
+				 ORDER BY nuid
+				";
+		$result = db_query($sql)->fetchAll();
+		
+		foreach($result as $r)
+		{
+			$user = user_load($r->uid);
+			$ret[] = array('id' => $id, 'uri' => $r->uri, 'caption' => $r->caption);
+			$id++;
+		}
+	}
+	
+	drupal_add_js('var med_id = ' . $id . ';', array('type' => 'inline', 'preprocess' => false));
+	$default_data = json_encode($ret);
+	
+	$form['media_selector']['media_data_hid'] = array(
+		'#type' => 'hidden', 
+		'#default_value' => $default_data,
+		'#attributes' => array('autocomplete'=>'off'),
+	);
+	
+	$form['media_selector']['content'] = array(
+		'#markup' => t('<div id="media_markup">
+					    </div>
+						<div id="caption_div" title="Add caption">
+						</div>
+						<br/>
+						<div style="color: red; display: none; margin-bottom: 10px;" id="error_div">Invalid media type. Choose among *.bmp, *.gif, *.jpg, *.png, *.tif, *.avi, *.wmv, *.ogv, *.mp4, *.webm</div>
+					    <img title="Add media" id="add_file_img" height="30" width="33" onclick ="add_new_file()" style="cursor: pointer;" src="' . base_path() . drupal_get_path('module', 'topicmgr') . '/images/add.gif"></img>'
+					  )
+	);
+	
+}
+
+function update_article_media($node) {
+	$nid = $node->nid;
+	
+	$med_json = $node->med_json;
+	$med_arr = json_decode($med_json);
+	//delete all previous media for the article node
+	$sql =  "DELETE
+			 FROM {article_media}
+			 WHERE nid = $nid";
+	db_query($sql);
+
+	foreach ($med_arr as $med){
+		$sql =  "INSERT INTO {article_media} (nid,uri,caption)
+				 VALUES (:nid,:uri,:caption)";
+		$args = array(
+				':nid' => $nid,
+				':uri' => $med->uri,
+				':caption' => $med->caption,
+		);
+		db_query($sql,$args);
+	}
+	global $user;
+	//if current user not in rem_usrs, add user to rem_usrs
+	$lang = $node->language;
+	$found = false;
+	foreach($node->field_rem_usrs[$lang] as $usr) {
+		$uid = $usr['target_id'];
+		if($uid == $user->uid){
+			$found = true;
+			break;
+		}
+	}
+	if(!$found) {
+		$node->field_rem_usrs[$lang][] = array('target_id'=>$user->uid);
+	}
+}
+
+function media_browser_node_submit(&$node, $form, &$form_state) {
+	
+	if($node->type == 'article')
+		$node->med_json = $form_state['values']['media_data_hid'];
+	
+	if($node->nid && $node->type=='article') //case node-edit
+		update_article_media($node);
+}
+
+function media_browser_node_insert($node) { //case node-insert
+	if($node->type=='article')
+		update_article_media($node);
+}
+

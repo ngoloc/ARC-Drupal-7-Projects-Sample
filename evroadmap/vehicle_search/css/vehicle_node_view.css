@@ -1,0 +1,23 @@
+.inner-info {
+	font-size: 11px;
+	padding: none;
+	margin-left: none;
+	background-color: white;
+}
+
+.vehicle-info {
+	margin-left: 20px;
+	padding: 30px 30px 30px 30px;
+	width: 200px;
+	background: url("../images/menu_bg.png") repeat left top;
+	display:inline-block;
+	vertical-align:middle;
+}
+
+.vehicle-description {
+	font-size: 11px;
+	margin-top: 20px;
+	padding: 10px 20px 20px 20px;
+	margin-bottom:20px;
+	background: url("../images/menu_bg.png") repeat left top; 
+}

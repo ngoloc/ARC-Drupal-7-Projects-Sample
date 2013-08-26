@@ -1,0 +1,84 @@
+<?php
+
+function author_commit_menu() {
+
+	$items = array();
+
+	$items['admin/settings/useragreement'] = array(
+			'title' => 'User Agreement',
+			'description' => 'Allow Editorial Coordinators to edit user agreement',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('author_commit_admin'),
+			'access arguments' => array('access administration pages'),
+			'type' => MENU_NORMAL_ITEM,
+	);
+	
+	return $items;
+}
+
+function author_commit_admin() {
+	$form = array();
+	
+	$form['user_agreement_content'] = array(
+			'#title' => t("User Agreement (author's submission)"),
+			'#type' => 'textarea',
+			'#description' => t ('Change user agreement content in article edit form'),
+			'#default_value' => variable_get('author_agreement_content', ""),
+			'#required' => TRUE,
+	);
+	$form['#submit'][] = 'user_agreement_content_submit';
+	return system_settings_form($form);
+}
+
+function user_agreement_content_submit($form, &$form_state){
+	variable_set("author_agreement_content", $form_state['values']['user_agreement_content']);
+}
+
+function author_commit_form_article_node_form_alter(&$form, $form_state, $form_id) {
+	$form['user_agreement'] = array (
+		'#type' => 'fieldset',
+		'#title' => t('User Agreement'),
+		'#weight' => 10,
+		'#collapsible' => TRUE,
+		'#collapsed' => TRUE,	
+	);
+	
+	$form['#validate'][] = 'check_user_agreement';
+	
+	$form['user_agreement']['content'] = array(
+		'#markup' => t('<div style="margin-bottom: 20px">'. variable_get('author_agreement_content', "") . '</div>'),
+	);
+	
+	//check if the currrent user already checked the user agreement for this article
+	$checked_arr = array();
+	if(isset($form['nid']['#value'])) {
+		$node = node_load($form['nid']['#value']);
+		global $user;
+		$lang = $node->language;
+		$found = false;
+		foreach($node->field_rem_usrs[$lang] as $usr) {
+			$uid = $usr['target_id'];
+			if($uid == $user->uid){
+				$found = true;
+				break;
+			}
+		}
+		
+		if($found)
+			$checked_arr = array('checked'=>'checked');
+	}
+
+	$form['user_agreement']['ua_checked'] = array(
+		'#type' => 'checkbox',
+		'#attributes' => $checked_arr,
+		'#title' => t('I agree'),
+	);
+}
+
+function check_user_agreement($form, &$form_state) {
+	
+	if(!$form_state['values']['ua_checked']){
+		form_set_error('ua_checked', t('You must check user agreement'));
+	}
+	
+}

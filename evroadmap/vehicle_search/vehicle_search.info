@@ -1,0 +1,3 @@
+name = Vehicle Search Module
+description = Enable Simple & Advanced Search for vehicles
+core = 7.x

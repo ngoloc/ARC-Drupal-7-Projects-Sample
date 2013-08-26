@@ -1,0 +1,139 @@
+<?php
+
+function CK_Editor_Caption_menu(){
+	  $items = array();
+	  
+      $items['ckec_ajax_callback'] = array(
+	    'title' => 'CK Editor Caption Callback',
+	    'page callback' => 'ck_editor_caption_ajax_callback',
+	    'access arguments' => array('access content'),
+	    'type' => MENU_CALLBACK,
+	  );
+
+	  return $items;
+}
+
+function ck_editor_caption_ajax_callback(){
+	if(!isset($_POST["func_no"])){
+		exit;
+	}
+	$func_no = $_POST["func_no"];
+	switch($func_no){
+		case 1:
+			if(!isset($_SESSION['updated_captions']))
+				$_SESSION['updated_captions'] = array($_POST["fid"] => $_POST["caption_val"]);
+			else
+				$_SESSION['updated_captions'][$_POST["fid"]] = $_POST["caption_val"];
+
+			break;
+	}
+}
+
+function CK_Editor_Caption_form_alter(&$form, $form_state, $form_id)  {
+  
+  if($form_id == 'news_post_node_form') {
+  	unset($_SESSION['caption_vid']);
+  	if($form['vid']['#value'] != NULL) {
+  		$_SESSION['caption_vid'] = $form['vid']['#value'];
+  	}
+  }
+  
+  if($form_id == "media_format_form" )  {
+  	drupal_add_js(drupal_get_path('module', 'CK_Editor_Caption') . '/scripts/ajax.googleapis.com/jquery.min.js', 'file');
+  	drupal_add_js(drupal_get_path('module', 'CK_Editor_Caption') . '/scripts/ajax.googleapis.com/jquery-ui.min.js', 'file');
+  	drupal_add_js(drupal_get_path('module', 'CK_Editor_Caption') . '/scripts/image_caption.js','file');
+  	drupal_add_css(drupal_get_path('module', 'CK_Editor_Caption') . '/css/base/jquery.ui.all.css', 'file');
+	$fid = $form['#media']->fid;
+  	$vid = isset($_SESSION['caption_vid']) ? $_SESSION['caption_vid'] : 0;
+ 
+  	$sql = "SELECT caption
+		  	FROM {image_caption}
+			WHERE fid = $fid AND vid = $vid";
+  	
+  	$result = db_query($sql);
+  	$caption = $result->rowCount() > 0 ? $result->fetch()->caption : 'empty';
+  	if(isset($_SESSION['updated_captions'][$fid]))
+  		 $caption = $_SESSION['updated_captions'][$fid];
+  	$ajax_url = base_path() . 'ckec_ajax_callback/';
+	$form['options']['caption'] = array(
+	  '#markup' => '<div title="Add Caption" id="dialog"></div>
+	          		Caption: <span id="caption_text">' . $caption . '</span> | <a href=javascript:change_caption(' . $fid . ',"' . $ajax_url . '")>update</a>',
+	);
+  }
+}
+
+function update_captions($node)
+{
+	if ($node->nid && $node->type=='news_post') {
+
+		$updated_captions = $_SESSION['updated_captions'];
+		$vid = $node->vid;
+
+		foreach($updated_captions as $fid => $caption_val){
+			$html_caption = str_replace('\\','&#x5C;',htmlspecialchars($caption_val, ENT_QUOTES));
+
+			$sql = "SELECT *
+			 		FROM {image_caption}
+			 		WHERE fid = $fid AND vid = $vid";
+			$result = db_query($sql);
+			if($result->rowCount()>0) {
+				//case update
+				$sql = "UPDATE {image_caption}
+						SET caption = '$html_caption'
+						WHERE fid = $fid AND vid = $vid";
+				db_query($sql);
+			}
+			else {
+			  	//case insert
+			  	$sql = "INSERT INTO {image_caption} (fid,vid,caption)
+						VALUES($fid,$vid,'$html_caption')";
+			  	db_query($sql);
+			}	
+		}
+		unset($_SESSION['updated_captions']);
+		unset($_SESSION['caption_vid']);
+	}
+}
+
+function CK_Editor_Caption_node_submit($node, $form, &$form_state) {
+	update_captions($node);
+}
+
+function CK_Editor_Caption_node_insert($node) {
+	update_captions($node);
+}
+
+/*
+ * Hook to display captions
+*/
+function CK_Editor_Caption_node_view($node, $view_mode, $langcode) {
+	if($node->type=='news_post'){
+		drupal_add_js(drupal_get_path('module', 'CK_Editor_Caption') . '/scripts/ajax.googleapis.com/jquery.min.js', 'file');
+		drupal_add_js(drupal_get_path('module', 'CK_Editor_Caption') . '/scripts/image_caption.js','file');
+		$vid = $node->vid;
+		$sql = "SELECT *
+			 	FROM {image_caption}
+			 	WHERE vid = $vid";
+		$result = db_query($sql)->fetchAll();
+
+		$javascript_str = '
+						     $(document).ready(function() {
+							 	// Handler for .ready() called.
+	 							//var $img_65  = $("#img_65").clone();
+							    var data = jQuery.parseJSON(\'' . json_encode($result) . '\');
+							    
+							    for (key in data) {
+							        show_caption(data[key]["fid"], data[key]["caption"]);
+								}
+	 							
+							 });
+						  ';
+		
+		drupal_add_js($javascript_str,'inline');
+	}
+}
+
+function CK_Editor_Caption_media_token_to_markup_alter(&$element, $tag_info, $settings) {
+	$fid = $element['#file']->fid;
+	$element['#attributes']['class'] = 'media-image img_' . $fid;
+}

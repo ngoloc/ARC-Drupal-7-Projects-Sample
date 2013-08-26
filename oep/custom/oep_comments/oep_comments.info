@@ -1,0 +1,7 @@
+name = Comment Access
+description = Extended access control for comments for user role 
+package = Access control
+version = "7.x-1.0"
+core = 7.x
+php = 5.2
+files[] = oep_comments.module

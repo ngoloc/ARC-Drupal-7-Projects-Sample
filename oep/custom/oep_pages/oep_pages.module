@@ -1,0 +1,1283 @@
+<?php
+
+// $Id$
+
+/**
+ * @file
+ * Example module to demonstrate using the menu system.
+ * 
+ * For more information about hook_menu(), see:
+ * http://api.drupal.org/api/drupal/modules--system--system.api.php/function/hook_menu/7
+ *
+ * In this file, we are demonstrating how hook_menu_alter() works and how to implement it.
+ */
+
+// including privatemsg module for access control 
+//include 'sites/all/modules/privatemsg/privatemsg.module';
+
+
+
+
+/**
+ * Implements hook_menu().
+ */
+//@todo add role for managing editor
+function oep_pages_menu() {
+
+  /** Ignore next three pages for testing to upload users **/
+  $items['init/users'] = array(
+    'title' => 'Init users',
+    'description' => 'Init users',
+    'page callback' => 'test_add_users',
+    'access callback' => TRUE,
+  );
+  $items['edit/users'] = array(
+    'title' => 'Edit users',
+    'description' => 'Edit users',
+    'page callback' => 'user_edit',
+    'access callback' => TRUE,
+  );
+  $items['delete/users'] = array(
+    'title' => 'Delete users',
+    'description' => 'Delete users',
+    'page callback' => 'test_user_delete',
+    'access callback' => TRUE,
+  );
+  
+  
+  $items['mypages'] = array(
+    'title' => '',
+    'description' => 'Menu system example that returns a string.',
+    'page callback'    => 'privatemsg_list_page',
+    'page arguments'   => array('list'),
+    'file'             => 'privatemsg.pages.inc',
+    'file path' => drupal_get_path('module', 'privatemsg'),
+    //'page callback' => 'user_msg',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(0),
+  );
+  $items['mypages/default'] = array(
+    'title' => 'Message',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['mypages/default/new'] = array(
+    'title'            => 'Write new message',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('privatemsg_new', 2, 3, NULL),
+    'file'             => 'privatemsg.pages.inc',
+    'file path'        => drupal_get_path('module', 'privatemsg'),
+    'access callback'  => 'privatemsg_user_access',
+    'access arguments' => array('write privatemsg'),
+    'type'             => MENU_LOCAL_ACTION,
+    'weight'           => -3,
+    'menu_name'        => 'user-menu',     
+      
+  );
+    $items['mypages/default/view/%privatemsg_thread'] = array(
+    // Set the third argument to TRUE so that we can show access denied instead
+    // of not found.
+    'load arguments'   => array(NULL, NULL, TRUE),
+    'title'            => 'Read message',
+    'page callback'    => 'privatemsg_view',
+    'page arguments'   => array(3),
+    'file'             => 'privatemsg.pages.inc',
+    'file path'        => drupal_get_path('module', 'privatemsg'),
+    'access callback'  => True,
+    'access arguments' => array(3),
+    'type'             => MENU_LOCAL_TASK,
+    'weight'           => -5,
+    'menu_name'        => 'user-menu',
+  );
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  
+  $items['mypages/by-state'] = array(
+    'title' => 'Articles',
+    'description' => 'Menu system example using a render array.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+  	'page arguments' => array('not-started'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );
+//  $items['mypages/by-state/not-assigned'] = array(
+//    'type' => MENU_DEFAULT_LOCAL_TASK,
+//    'title' => 'Not assigned',
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//  	'weight' => 2,
+//  );
+  $items['mypages/by-state/not-started'] = array(
+    'title' => 'Not started',
+    'description' => 'Demonstrating secondary tabs.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+  	'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  	'weight' => 3,
+  );
+
+  $items['mypages/by-state/being-written'] = array(
+    'title' => 'In Progress',
+    'description' => 'Demonstrating secondary tabs.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 4,
+  );
+  $items['mypages/by-state/review'] = array(
+    'title' => 'Needs Reviewers',
+    'description' => 'Demonstrating secondary tabs.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+  	'page arguments' => array(2),
+  	'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+  	'weight' => 5,
+  );
+  $items['mypages/by-state/assigned-reviewers'] = array(
+    'title'   => 'Assigned To Reviewers',
+    'desription' => 'Articles that have been assigned to reviewers (fact checkers or editors)',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 6,
+  );
+  $items['mypages/by-state/assigned-reviewers/assigned-factcheckers'] = array(
+    'title'   => 'Assigned To Fact Checkers',
+    'desription' => 'Articles assigned to Fact Checkers',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(3),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 1,
+  );
+    $items['mypages/by-state/assigned-reviewers/assigned-editors'] = array(
+    'title'   => 'Assigned To Editors',
+    'desription' => 'Articles assigned to Editors)',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(3),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight'=> 0,
+  );
+
+  $items['mypages/by-state/reviews-completed'] = array(
+    'title'   => 'Reviews Completed',
+    'desription' => 'Articles that have been completely reviewed (number of editors was satisfied)',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 7,
+  );
+  
+  $items['mypages/by-state/needs-eic-review'] = array(
+    'title'   => 'Needs Editors in Chief',
+    'desription' => 'Needs Editors in Chief',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 8,
+  );
+  
+  $items['mypages/by-state/assigned-eics'] = array(
+    'title'   => 'Assigned to Editors in Chief',
+    'desription' => 'Assigned to Editors in Chief',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 9,
+  );
+  
+  $items['mypages/by-state/needs-me-review'] = array(
+    'title'   => 'Needs Managing Editors',
+    'desription' => 'Needs Managing Editors',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 10,
+  );
+  
+  $items['mypages/by-state/assigned-mes'] = array(
+    'title'   => 'Assigned to Managing Editors',
+    'desription' => 'Assigned to Managing Editors',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 11,
+  );
+  
+  $items['mypages/by-state/needs-ce-review'] = array(
+    'title'   => 'Needs Copy Editors',
+    'desription' => 'Needs Copy Editors',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'by_article_state',
+    'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight'=> 12,
+  );
+  
+  $items['mypages/by-state/assigned-ces'] = array(
+  		'title'   => 'Assigned to Copy Editors',
+  		'desription' => 'Assigned to Copy Editors',
+  		'file' => 'page.callback.article.inc',
+  		'page callback' => 'by_article_state',
+  		'page arguments' => array(2),
+  		'access callback' => 'get_oep_page_access',
+  		'access arguments' => array(1),
+  		'type' => MENU_LOCAL_TASK,
+  		'weight'=> 13,
+  );
+  
+  $items['mypages/by-state/ce-reviews-completed'] = array(
+  		'title'   => 'CE Reviews completed',
+  		'desription' => 'CE Reviews completed',
+  		'file' => 'page.callback.article.inc',
+  		'page callback' => 'by_article_state',
+  		'page arguments' => array(2),
+  		'access callback' => 'get_oep_page_access',
+  		'access arguments' => array(1),
+  		'type' => MENU_LOCAL_TASK,
+  		'weight'=> 14,
+  );
+  
+    $items['mypages/by-state/published'] = array(
+  		'title'   => 'Published',
+  		'desription' => 'published articles',
+  		'file' => 'page.callback.article.inc',
+  		'page callback' => 'by_article_state',
+  		'page arguments' => array(2),
+  		'access callback' => 'get_oep_page_access',
+  		'access arguments' => array(1),
+  		'type' => MENU_LOCAL_TASK,
+  		'weight'=> 15,
+  );  
+//  $items['mypages/by-state/return-to-revision'] = array(
+//    'title' => 'Return to Revision',
+//    'description' => 'Demonstrating secondary tabs.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'by_article_state',
+//    'page arguments' => array(2),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_LOCAL_TASK,
+//    'weight' => 7,
+//  );
+  
+  $items['mypages/by-state-alternative'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 3,
+    'title' => 'Alternative',
+    'description' => 'Menu system example using a render array.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pages_articles_with_form'),
+    'access callback' => false,
+  );
+  
+  /**
+    @TODO: make it change editorial review group which loc made
+  */
+  $items['mypages/article/%/approve'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 4,
+    'title' => 'Assign Reviewers',
+    'description' => 'Assign & Withdraw Reviwers.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('approve_page'),
+    'file' => 'build.page.inc',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array('by-state'),
+  );
+ 
+  $items['mypages/article/%/edit-author'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+    'title' => 'Assign Author',
+    'description' => 'Assign Author',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('edit_author'),
+    'file' => 'editauthor.inc',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array('by-state'),
+  );
+  
+  $items['mypages/article/%/view'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 6,
+    'title' => 'Article View',
+    'description' => 'Article View',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'article_view_page',
+    'page arguments' => array(2),
+    'access arguments' => array('access content')
+  );
+  
+//  $items['mypages/file-manager'] = array(
+//    'title' => 'File Manager',
+//    'description' => 'File Manager.',
+//    'page callback' => simple_page_callback,
+//    'page arguments' => array('File Manager will be active soon.'),
+//    'access callback' => TRUE,
+//    //'access arguments' => array('access content'),
+//    //'access arguments' => true,
+//    'weight' => 4,
+//    'type' => MENU_LOCAL_TASK,
+//  );
+  
+  $items['mypages/users'] = array(
+    'title' => 'Users',
+    'description' => 'Search User.',
+    'file' => 'page.callback.restful.inc',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('user_filteredByRole'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['mypages/author'] = array(
+    'title' => 'Author',
+    'description' => 'Author.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_author_article',
+    'page arguments' => array('assigned'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['mypages/author/assigned'] = array(
+    'title' => 'Entries assigned',
+    'description' => 'Entries assigned.',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  	'weight' => 2,
+  );
+  $items['mypages/author/submitted'] = array(
+    'title' => 'Entries submitted',
+    'description' => 'Entries submitted.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_author_article',
+    'page arguments' => array('submitted'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+  	'weight' => 3,
+  );
+//  $items['mypages/author/published'] = array(
+//    'title' => 'Entries published',
+//    'description' => 'Entries published.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'pages_author_article',
+//    'page arguments' => array('published'),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_LOCAL_TASK,
+//  	'weight' => 4,
+//  );
+  $items['mypages/copyeditor'] = array(
+    'title' => 'Copy Editor',
+    'description' => 'Copy Editor.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_copy_editor',
+//     'page arguments' => array('assigned'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+  );
+//   $items['mypages/copyeditor/assigned'] = array(
+//     'title' => 'Articles assigned for review',
+//     'description' => 'Articles assigned for review.',
+//     'access callback' => 'get_oep_page_access',
+//     'access arguments' => array(1),
+//     'type' => MENU_DEFAULT_LOCAL_TASK,
+//   	'weight' => 2,
+//   );
+//   $items['mypages/copyeditor/reviewed'] = array(
+//     'title' => 'Articles reviewed',
+//     'description' => 'Articles reviewed.',
+//     'file' => 'page.callback.article.inc',
+//     'page callback' => 'pages_copy_editor',
+//     'page arguments' => array('reviewed'),
+//     'access callback' => 'get_oep_page_access',
+//     'access arguments' => array(1),
+//     'type' => MENU_LOCAL_TASK,
+//   	'weight' => 3,
+//   );
+  $items['mypages/factchecker'] = array(
+    'title' => 'Fact Checker',
+    'description' => 'Fact Checker.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_fact_checker',
+    'page arguments' => array('assigned'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['mypages/factchecker/assigned'] = array(
+    'title' => 'Articles assigned for review',
+    'description' => 'Articles assigned for review.',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  	'weight' => 2,
+  );
+//  $items['mypages/factchecker/reviewed'] = array(
+//    'title' => 'Articles reviewed',
+//    'description' => 'Articles reviewed.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'pages_fact_checker',
+//    'page arguments' => array('reviewed'),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_LOCAL_TASK,
+//  	'weight' => 3,
+//  );
+  $items['mypages/editor'] = array(
+    'title' => 'Editor',
+    'description' => 'Editor.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_editor',
+    'page arguments' => array('assigned'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['mypages/editor/assigned'] = array(
+    'title' => 'Assigned Reviews',
+    'description' => 'Articles assigned for review.',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  	'weight' => 2,
+  );
+  
+  $items['mypages/editor/reviewed'] = array(
+    'title' => 'Submitted Reviews',
+    'description' => 'Articles reviewed.',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_editor',
+    'page arguments' => array('reviewed'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+  	'weight' => 3,
+  );
+  
+  $items['mypages/eic'] = array(
+    'title' => 'Editor in Chief',
+    'description' => 'EIC',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_eic',
+  	'page arguments' => array('assigned'),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['mypages/eic/assigned'] = array(
+    'title' => 'Articles assigned for review',
+    'description' => 'Articles assigned for review',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  	'weight' => 1,
+  );
+  
+  $items['mypages/eic/browse_entries'] = array(
+    'title' => 'Browse Entries',
+    'description' => 'Browse all articles by state.',
+    'file' => 'page.callback.article.inc',
+  	'page callback' => 'pages_eic',
+  	'page arguments' => array(2),
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+  	'weight' => 2,
+  );
+  
+  $items['mypages/me'] = array(
+    'title' => 'Managing Editor',
+    'description' => 'ME',
+    'file' => 'page.callback.article.inc',
+    'page callback' => 'pages_me',
+    'access callback' => 'get_oep_page_access',
+    'access arguments' => array(1),
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['mypages/deadline'] = array(
+      'title' => 'Deadline',
+      'description' => 'Deadlines for each state',
+      'file' => 'page.callback.article.inc',
+      'page callback' => 'pages_deadline',
+      'access callback' => 'get_oep_page_access',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 4,
+  );
+
+$items['mypages/switch_users'] = array(
+      'title' => 'Switch User',
+      'description' => 'Switch user page for admin and Ed Coord',
+      'file' => 'page.switch.users.inc',
+      'page callback' => 'pages_switch_users',
+      'access callback' => 'get_oep_page_access',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 12,
+  );
+
+ $items['mypages/manage_front_page'] = array(
+      'title' => 'Front Page',
+      'description' => 'Admin page to config front page; access for admin and EC only',
+      'file' => 'page.front.admin.inc',
+      'page callback' => 'pages_front_admin',
+      'access callback' => 'get_oep_page_access',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 11,
+  );
+ 
+  
+$items['mypages/featured_article'] = array(
+    'title' => 'featured_article_callback',
+    'page callback' => 'featured_article_update_ajax',
+    'access callback' => TRUE,
+    'file' => 'page.front.admin.inc', 
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['mypages/search'] = array(
+      'title' => 'Search',
+      'description' => 'Search for articles',
+  	  'page callback' => 'article_search',
+      'file' =>  'searching/article_search.inc',
+      'access callback' => 'get_oep_page_access',
+      'access arguments' => array(1),
+      'type' => MENU_LOCAL_TASK,
+      'weight' => 13,
+  );
+ 
+  
+//  $items['mypages/another_queue'] = array(
+//    'title' => 'B',
+//    'description' => 'another.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'simple_page_callback',
+//    'page arguments' => array('It is author section'),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'weight' => 7,
+//    'type' => MENU_LOCAL_TASK,
+//  );
+//  $items['mypages/another_queue/page1'] = array(
+//    'title' => 'Page',
+//    'description' => 'Page.',
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_DEFAULT_LOCAL_TASK,
+//  	'weight' => 2,
+//  );
+//  $items['mypages/another_queue/page2'] = array(
+//    'title' => 'Page',
+//    'description' => 'Page.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'simple_page_callback',
+//    'page arguments' => array('It is author section'),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_LOCAL_TASK,
+//  	'weight' => 3,
+//  );
+//  $items['mypages/another_queue/page3'] = array(
+//    'title' => 'Page',
+//    'description' => 'Page.',
+//    'file' => 'page.callback.article.inc',
+//    'page callback' => 'simple_page_callback',
+//    'page arguments' => array('It is author section'),
+//    'access callback' => 'get_oep_page_access',
+//    'access arguments' => array(1),
+//    'type' => MENU_LOCAL_TASK,
+//  	'weight' => 4,
+//  );
+//  
+  
+  
+  	  $items['advanced_search'] = array(
+	    'title' => 'Advanced Search',
+	    'page callback'    => 'advancedsearch',
+        'file' =>  'searching/advancedsearch.inc',
+        'access arguments' => array('access content'),
+	  	'weight' => 20,
+	  	'type' => MENU_NORMAL_ITEM,
+	  );
+	  
+      $items['mypages/email_templates'] = array(
+      	'title' => 'Email Templates',
+        'description' => 'Email Templates',
+        'page callback' => 'return_email_templates',
+      	'access callback' => 'get_oep_page_access',
+        'access arguments' => array('by-state'),
+      	'type' => MENU_LOCAL_TASK,
+      );
+      
+      $items['mypages/file-manager'] = array(
+	    'title' => 'File Manager',
+	    'description' => 'File Manager.',
+	    'page callback' => 'filemanager',
+	    'file' => 'page.callback.filemanager.inc',
+	    'access callback' => 'get_oep_page_access',
+	    'access arguments' => array('by-state'),
+	    'type' => MENU_LOCAL_TASK,
+	  );
+  	  
+      $items['mypages/file-manager/authenticate'] = array(
+      	'page callback' => 'filemanager_authenticate',
+      	'file' => 'page.callback.filemanager.inc',
+      	'access callback' => 'get_oep_page_access',
+      	'access arguments' => array('by-state'),
+      	'type' => MENU_LOCAL_TASK,
+      );
+  
+	  $items['ec/edit/user'] = array(
+	    'title' => 'Edit Author',
+	    'description' => 'Search User.',
+	    'page callback' => simple_page_callback,
+	    'page arguments' => array('EC can edit Author.'),
+	    'access callback' => TRUE,
+	  );
+  
+   
+  
+  
+  /** REST API **/
+  /** TODO: add page access function for each user into the page **/
+  $items['unapprove/%/user/%/selector/%/field/%/ajax-callback'] = array(
+    'title' => 'This is a callback function for an Ajax page',
+    'description' => 'Callback function for an Ajax page.',
+    'file' => 'page.callback.restful.inc',
+    'page callback' => 'interact_unapprove_callback',
+    'page arguments' => array(1,3,5,7),
+    'theme callback' => 'ajax_base_page_theme', // Sets base theme to be the same as current page.
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  /** TODO: add page access function for each user into the page **/
+  $items['withdraw/%/article/%/selector/%/field/%/ajax-callback'] = array(
+    'title' => 'This is a callback function for an Ajax page',
+    'description' => 'Callback function for an Ajax page.',
+    'file' => 'page.callback.restful.inc',
+    'page callback' => 'interact_withdraw_aruthor_callback',
+    'page arguments' => array(1,3,5,7),
+    'theme callback' => 'ajax_base_page_theme', // Sets base theme to be the same as current page.
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
+
+/*
+ * email templates
+ */
+function return_email_templates(){
+	return views_embed_view('email_templates');
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function oep_pages_theme() {
+  return array(
+    'group_reviewer_list' => array(
+      'variables' => array('title' => array(), 'item' => array(), 'type'=>'ul', 'attributes'=>array(), ),
+    ),
+    'reviewer_list' => array(
+        'variables' => array(
+                        'reviwer_type'=>'type', 
+                        'title' => array(), 
+                        'item' => array(), 
+                        'type'=>'ul', 
+                        'attributes'=>array(), 
+        ),
+    ),
+    'oep_article_author_list' => array(
+        'variables' => array(
+                        'reviwer_type'=>'type', 
+                        'title' => array(), 
+                        'item' => array(), 
+                        'type'=>'ul', 
+                        'attributes'=>array(), 
+        ),
+    ),
+  );
+}
+
+/**
+ * Themes
+ */
+function theme_group_reviewer_list($variables) {
+  
+  $items = $variables['items'];
+  $title = $variables['title'];
+  $type = $variables['type'];
+  $attributes = $variables['attributes'];
+  $nid = $variables['nid'];
+  $uids = $variables['uids'];
+  
+  // Only output the list container and title, if there are any list items.
+  // Check to see whether the block title exists before adding a header.
+  // Empty headers are not semantic and present accessibility challenges.
+  $output = '<div class="item-list">';
+  if (isset($title) && $title !== '') {
+    $output .= '<h3>' . $title . '</h3>';
+  }
+
+  if (!empty($items)) {
+    $output .= "<$type" . drupal_attributes($attributes) . '>';
+    $num_items = count($items);
+    foreach ($items as $i => $item) {
+      $attributes = array();
+      $children = array();
+      $data = '';
+      if (is_array($item)) {
+        foreach ($item as $key => $value) {
+          if ($key == 'data') {
+            $data = $value;
+          }
+          elseif ($key == 'children') {
+            $children = $value;
+          }
+          else {
+            $attributes[$key] = $value;
+          }
+        }
+      }
+      else {
+        $data = $item;
+        
+        /** TODO: Attach Withdraw button to each item **/
+        $form['button1'] = array(
+            '#type' => 'button',
+            '#ajax' => array(
+                'callback' => 'my_ajax_func',
+                'wrapper' => 'input_os_verify_wrapper',
+            ),
+            '#value' => t('Withdraw'),
+        );
+        $data .= '<span><button type="button">Withdraw</button></span>';
+      }
+      
+      /* Remove recursive generation
+      if (count($children) > 0) {
+        $data .= theme_approve_list(array('items' => $children, 'title' => NULL, 'type' => $type, 'attributes' => $attributes));
+      }
+      */
+      if ($i == 0) {
+        $attributes['class'][] = 'first';
+      }
+      if ($i == $num_items - 1) {
+        $attributes['class'][] = 'last';
+      }
+      $output .= '<li' . drupal_attributes($attributes) . '>' . $data . "</li>\n";
+    }
+    $output .= "</$type>";
+  }
+  $output .= '</div>';
+  
+  return $output;
+}
+
+function theme_reviewer_list($variables) {
+  // Set the path to our script.
+  $script = drupal_get_path('module', 'interact') . '/interact.js';
+  // Include a JavaScript file.
+  $js = drupal_add_js($script);
+  drupal_add_library('interact', 'corner');
+  drupal_add_js('jQuery(".roundme").corner();', array('type' => 'inline', 'scope' => 'footer'));
+  drupal_add_js('misc/ajax.js');
+  
+  $items = $variables['items'];
+  $title = $variables['title'];
+  $type = $variables['type'];
+  $attributes = $variables['attributes'];
+  $nid = $variables['nid'];
+  $reviwer_type = $variables['reviwer_type'];
+  $field_name = $variables['field_name'];
+  //$uids = $variables['uids'];
+  
+  /** test ajax **/
+  $attr = array(
+    'attributes' => array(
+        'class' => array('use-ajax'),
+        'value' => 'inter_1'
+      )
+  );
+
+  // Only output the list container and title, if there are any list items.
+  // Check to see whether the block title exists before adding a header.
+  // Empty headers are not semantic and present accessibility challenges.
+  $output = '<div class="item-list">';
+  if (isset($title) && $title !== '') {
+    $output .= '<h3>' . $title . '</h3>';
+  }
+
+  if (!empty($items)) {
+    $output .= "<$type" . drupal_attributes($attributes) . '>';
+    $num_items = count($items);
+    foreach ($items as $i => $item) {
+      $attributes = array();
+      $children = array();
+
+      $name = $item['name'];
+      $uid = $item['uid'];
+      $sid = "$reviwer_type-$uid";
+      
+      //$url = "interact/unapprove/$nid/field/$field/user/$uid/selector/$sid/ajax-callback/nojs/";
+      $url = "unapprove/$nid/user/$uid/selector/$sid/field/$field_name/ajax-callback/nojs/";
+      $ajax_link = '<span>' . l(t('Click me to withdraw assigned reviewer'), $url, $attr) . '</span>';
+      $data = '<div id="changeme">'.$name.'.</div>' . $ajax_link;
+
+      if ($i == 0) {
+        $attributes['class'][] = 'first';
+      }
+      if ($i == $num_items - 1) {
+        $attributes['class'][] = 'last';
+      }
+      $output .= "<li id='$sid'" . drupal_attributes($attributes) . '>' . $data . "</li>\n";
+    }
+    $output .= "</$type>";
+  }
+  $output .= '</div>';
+  
+  return $output;
+}
+
+function theme_oep_article_author_list($variables) {
+  // Set the path to our script.
+  $script = drupal_get_path('module', 'interact') . '/interact.js';
+  // Include a JavaScript file.
+  $js = drupal_add_js($script);
+  drupal_add_library('interact', 'corner');
+  drupal_add_js('jQuery(".roundme").corner();', array('type' => 'inline', 'scope' => 'footer'));
+  drupal_add_js('misc/ajax.js');
+  
+  $items = $variables['items'];
+  $title = $variables['title'];
+  $type = $variables['type'];
+  $attributes = $variables['attributes'];
+  $nid = $variables['nid'];
+  $field_name = $variables['field_name'];
+  
+  /** test ajax **/
+  $attr = array(
+    'attributes' => array(
+        'class' => array('use-ajax'),
+        'value' => 'inter_1'
+      )
+  );
+
+  // Only output the list container and title, if there are any list items.
+  // Check to see whether the block title exists before adding a header.
+  // Empty headers are not semantic and present accessibility challenges.
+  $output = '<div class="item-list">';
+  if (isset($title) && $title !== '') {
+    $output .= '<h3>' . $title . '</h3>';
+  }
+
+  if (!empty($items)) {
+    $output .= "<$type" . drupal_attributes($attributes) . '>';
+    $num_items = count($items);
+    foreach ($items as $i => $item) {
+      $attributes = array();
+      $children = array();
+
+      $name = $item['name'];
+      $uid = $item['uid'];
+      $sid = "author-$uid";
+      
+      //$url = "withdraw/$nid/user/$uid/selector/$sid/field/$field_name/ajax-callback/nojs/";
+      $url = "withdraw/$uid/article/$nid/selector/$sid/field/$field_name/ajax-callback/nojs/";
+      $ajax_link = '<span>' . l(t('Click me to withdraw.'), $url, $attr) . '</span>';
+      $data = '<div id="changeme">'.$name.'.</div>' . $ajax_link;
+
+      if ($i == 0) {
+        $attributes['class'][] = 'first';
+      }
+      if ($i == $num_items - 1) {
+        $attributes['class'][] = 'last';
+      }
+      $output .= "<li id='$sid'" . drupal_attributes($attributes) . '>' . $data . "</li>\n";
+    }
+    $output .= "</$type>";
+  }
+  $output .= '</div>';
+  
+  return $output;
+}
+
+/**
+ * Page callback; page callback returning a simple string.
+ */
+function user_msg() {
+  global $user;
+  $output = "<p>Hello <strong>$user->name</strong>.</p>";
+  
+  return $output;
+}
+
+ 
+
+
+
+
+function simple_page_callback($in){
+	$output = '<p>'.$in.'</p>';
+	return $output;
+}
+
+/**
+ * Menu callback; TEST.
+ 
+ ROLE Convert
+    from
+      enum('author','admin','managing_ed','ed_in_chief','copy_editor','ed_board','referee','fact_checker','author_proxy','temp') | 
+    to
+       +-----+-----------------------+--------+
+      | rid | name                  | weight |
+      +-----+-----------------------+--------+
+      |   1 | anonymous user        |      0 | 
+      |   2 | authenticated user    |      1 | 
+      |   3 | administrator         |      2 | 
+      |   4 | author                |      3 | 
+      |   5 | managing editor       |      4 | 
+      |   7 | fact checker          |      6 | 
+      |   8 | editor                |      7 | 
+      |   9 | editor in chief       |      8 | 
+      |  10 | editorial coordinator |      9 | 
+
+      |  11 | test_coordinator      |     10 | 
+      |  12 | test_author           |     11 | 
+      |  13 | test_fact_checker     |     12 | 
+      |  14 | test_copy_editor      |     13 | 
+      |  15 | test_managing_editor  |     14 | 
+      |  16 | test_editor_in_chief  |     15 | 
+      |  17 | test_editor           |     16 | 
+      +-----+-----------------------+--------+
+ */
+function test_add_users() {
+  $output = '';
+  $role_ref = array(
+    'author' => array( 4 => 'author'),
+    'admin' => array( 10 => 'editorial coordinator'),
+    'managing_ed' => array( 5 => 'managing editor'),
+    'ed_in_chief' => array( 9 => 'editor in chief'),
+    'copy_editor' => array( 4 => 'copy editor'),
+    'ed_board' => array( 4 => 'none'), // should be gone.
+    'referee' => array( 4 => 'none'),  // should be gone.
+    'fact_checker' => array( 4 => 'fact checker'),
+    'author_proxy' => array( 4 => 'none'), 
+    'temp' => array( 2 => 'authenticated user'), // only authenticated
+  );
+  
+  // Test load user
+  if ( false ) {
+    //$user = user_load_by_mail('limm_fact_checker@example.com');
+    $user = user_load(10);
+    //$user->roles[7] = 'fact checker';
+    $user->uid = strval( intval($user->uid) * 1000 );
+    dsm($user, 'user');
+    //user_save($user);
+  }
+  
+  // Test delete user
+  if(false){
+    $uid = 22;
+    user_delete("$uid");
+  }
+  
+  // Test: create user
+  if ( false && false == user_load_by_mail('foo@example.com')) {
+    //set up the user fields
+    $fields = array(
+      
+      'name' => 'foo@example.com',
+      'mail' => 'foo@example.com',
+      'pass' => 'foo@example.com',
+      'status' => 1,
+      'init' => 'email address',
+      'roles' => array( DRUPAL_AUTHENTICATED_RID => 'authenticated user', 4=>'author'),
+    );
+   
+    //the first parameter is left blank so a new user is created
+    $account = user_save('', $fields);
+  }
+  
+  if (false) {
+    $sql = "select A.uid, A.role, B.email, B.fname, B.lname, B.user_type
+            from old_oep_user_roles A
+            left join old_oep_users B
+            on A.uid=B.uid";
+    $r = db_query($sql);
+    $arr = array();
+    foreach ($r as $row) {
+      $arr[] = $row;
+    }
+    foreach ( $arr as $row ){
+      $user = user_load_by_mail('foo@example.com');
+      if ($user) {
+        // update the role
+      } else {
+        // create new user
+        //set up the user fields
+        $fields = array(
+          'name' => 'foo@example.com',
+          'mail' => 'foo@example.com',
+          'pass' => 'foo@example.com',
+          'status' => 1,
+          'init' => 'email address',
+          'roles' => array( DRUPAL_AUTHENTICATED_RID => 'authenticated user', 4=>'author'),
+        );
+       
+        //the first parameter is left blank so a new user is created
+        //$account = user_save('', $fields);
+      }
+    }
+    $line = "1,val.ballestrem@ohs.org,9fd8de5fc2a7c2c0d469b2fff1afde4e5def37ba,0,Val,Ballestrem,2008-06-24 16:41:43,,,admin,0,,";
+    $line = str_replace(array("\n"), '', $line);
+    $arr = explode(",", $line);
+    $line = join("','", $arr);
+    $line = str_replace(array("''"), 'null', $line);
+    $sql = "INSERT INTO old_oep_users VALUES ('$line')"; 
+    //$sql = "INSERT INTO old_oep_users VALUES 
+    //('1','val.ballestrem@ohs.org','9fd8de5fc2a7c2c0d469b2fff1afde4e5def37ba','0','Val','Ballestrem','2008-06-24 16:41:43','Mr','','admin','0',null,'')";
+    $r = db_query($sql);
+    dsm($sql, 'sql');
+  }
+  // Upload
+  if ( false ) {
+    $url = drupal_get_path('module', 'oep_pages');
+    dsm($url,'url');
+    // $file = fopen( $url."/users.csv", "r") or exit("Unable to open file!!");
+    //Output a line of the file until the end is reached
+    
+    $users = array();
+    if ( !feof($file) ) {
+      $header = fgets($file);
+    }
+    while(!feof($file))
+    {
+      $line = fgets($file);
+      $line = str_replace(array("\n"), '', $line);
+      $arr = explode(",", $line);
+      if ( count($arr) == 9 ) {
+        $line = join("','", $arr);
+        $line = str_replace(array("''"), 'null', $line);
+        $sql = "INSERT INTO old_oep_users VALUES ('$line')"; 
+        
+        $r = db_query($sql);
+      } else {
+        error_log("A custom error has been triggered",1,"someone@example.com","From: webmaster@example.com");
+      }
+    }
+    dsm($users, 'users');
+    //fclose($file);
+  }
+
+  if ( false && false == user_load_by_mail('foo@example.com')) {
+     //This will generate a random password, you could set your own here
+    $password = user_password(8);
+   
+    //set up the user fields
+    $fields = array(
+      'name' => 'foo@example.com',
+      'mail' => 'foo@example.com',
+      'pass' => 'foo@example.com',
+      'status' => 1,
+      'init' => 'email address',
+      //'roles' => array( DRUPAL_AUTHENTICATED_RID => 'authenticated user', 'author'),
+      'roles' => array( DRUPAL_AUTHENTICATED_RID => 'authenticated user', 4=>'author'),
+      //'roles' => array(4),
+    );
+   
+    //the first parameter is left blank so a new user is created
+    $account = user_save('', $fields);
+
+    
+    $account = new stdClass;
+    $account->is_new = TRUE;
+    $account->name = 'foo';
+    //$var = user_hash_password('foo@example.com');
+    //$account->pass = user_hash_password('bar');
+    //$account->mail = 'foo@example.com';
+    //$account->init = 'foo@example.com';
+    //$account->status = TRUE;
+    //$account->roles = array(DRUPAL_AUTHENTICATED_RID => TRUE);
+    //$account->timezone = variable_get('date_default_timezone', '');
+    //user_save($account);
+    $output = "<p>A user 'foo' saved.</p>";
+  }
+
+  return $output;
+}
+
+function user_edit() {
+  $output = '';
+  return $output;
+  
+  $var = user_load_by_mail('foo@example.com');
+  $account = user_load($var->uid); // Loading account
+
+  dsm($var,'var');
+  dsm($account,'account');
+
+  if ( false ) {
+  $edit = array(
+      'field_some_custom_field' => array(
+        'und' => array(
+          0 => array(
+            'value' => $new_value,
+          ),
+        ),
+      ),
+    );
+    user_save($account, $edit);
+  }
+
+  return $output;
+}
+
+function test_user_delete() {
+  return '';
+  $uid = 22;
+  user_delete("$uid");
+  $output = "User id $uid have been deleted.";
+  return $output;
+}
+
+
+
+/**********
+ * Page Access Callback; Return page access.
+ **/
+
+function get_oep_page_access($class){
+  global $user;
+  $user_roles = $user->roles;
+
+  /** list of class to control **/
+  $allowed_class = array('by-state', 'author', 'factchecker', 'copyeditor', 'editor', 'eic', 'me', 'switch_users', 'deadline','manage_front_page','search');
+  if(in_array($class, $allowed_class) == false){
+    return true;
+  }
+  
+//   $access_ref =
+//     array(
+//       'by-state' => array( 'administrator','editorial coordinator', 'test_coordinator'),
+//       'author' => array( 'administrator','author', 'test_author'),
+//       'factchecker' => array( 'administrator','fact checker', 'test_fact_checker'),
+//       'copyeditor' => array( 'administrator','copy_editor', 'test_copy_editor'),
+//       'editor' => array( 'administrator','editor', 'test_editor'),
+//       'eic' => array( 'administrator', 'editor in chief'),
+//     );
+  $access_ref =
+  	array(
+  		'by-state' => array( 'administrator','editorial coordinator'),
+  		'author' => array( 'author'),
+  		'factchecker' => array( 'fact checker'),
+  		'copyeditor' => array( 'copy editor'),
+  		'editor' => array( 'editor'),
+  		'eic' => array( 'editor in chief'),
+  		'me' => array('managing editor'),
+        'switch_users' => array('administrator','editorial coordinator'),
+		'deadline' => array('administrator','editorial coordinator'),
+        'manage_front_page' => array('administrator','editorial coordinator'),
+  		'search' => array('administrator','editorial coordinator'),
+  	);
+  $allowed_roles = $access_ref[$class];
+  $access = valid_intersection($user_roles, $allowed_roles);
+  return $access;
+}
+ 
+/** useful methods **/
+function valid_intersection($list, $checklist) {
+  foreach ( $list as $item ){
+    foreach ( $checklist as $required ) {
+      if ( $item == $required ){
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Implementation of hook_form_alter
+ */
+function oep_pages_form_alter(&$form, &$form_state, $form_id){
+    if ($form_id == 'privatemsg_list'){
+        
+    }
+    if ($form_id == 'user_login'){
+        $form['#submit'][] = 'oep_pages_login_submit';
+      
+    }
+}
+
+function oep_pages_login_submit($form, &$form_state){
+    $form_state['redirect'] = 'mypages';
+}
+
+

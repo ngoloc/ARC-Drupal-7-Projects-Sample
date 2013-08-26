@@ -1,0 +1,1002 @@
+<?php
+
+include_once 'vehicle_search_config.inc';
+
+function vehicle_search_menu(){
+	$items = array();
+	  
+    $items['vehicle-advanced-search'] = array(
+    		'title' => 'Vehicle Search',
+    		'page callback' => 'drupal_get_form',
+    		'page arguments' => array('vehicle_advanced_search'),
+    		'access arguments' => array('access content'),
+    		'type' => MENU_CALLBACK,
+	);
+    
+	$items['admin/settings/advanced-search-config'] = array(
+			'title' => 'Advanced Search',
+			'description' => 'Allow Admins to configurate the Advanced Search Options',
+			'page callback' => 'drupal_get_form',
+			'page arguments' => array('advanced_search_config'),
+			'access arguments' => array('access administration pages'),
+			'file' => 'vehicle_search_config.inc', 
+			'type' => MENU_NORMAL_ITEM,
+	);
+      
+	$items['simple-ev-ajax-callback'] = array (
+			'title' => 'My callback',
+			'page callback' => 'simple_ev_ajax_callback',
+			'access arguments' => array('access content'),
+			'type' => MENU_CALLBACK,
+	);
+	
+	return $items;
+}
+
+function simple_ev_ajax_callback() {
+	if(!isset($_POST["func_no"])) {
+		exit;
+	}
+	$func_no = $_POST["func_no"];
+	switch($func_no) {
+		case 1:
+			$vehicle_type = $_POST['vehicle_type'];
+			$battery_range = $_POST['battery_range'];
+			$vehicle_class = $_POST['vehicle_class'];
+			$connector_type = $_POST['connector_type'];
+			
+			$_SESSION['vs_vehicle_type'] = drupal_map_assoc(json_decode($vehicle_type));
+			if($battery_range!='all')
+				$_SESSION['vs_vehicle_range'] = array($battery_range => $battery_range);
+			if($vehicle_class!='all')
+				$_SESSION['vs_vehicle_class'] = array($vehicle_class => $vehicle_class);
+			if($connector_type!='all')
+				$_SESSION['vs_connector_type'] = array($connector_type => $connector_type);
+			$redirect = 'http://' .$_SERVER['HTTP_HOST'] . base_path() . 'vehicle-advanced-search';
+			echo $redirect;
+			break;
+	}
+}
+
+function vehicle_advanced_search($form, &$form_state)
+{
+	$vehicle_type_options = get_cck_field_options('node','field_type','vehicle');
+	unset($vehicle_type_options['_none']);
+	unset($vehicle_type_options['other']);
+	
+	
+	$connector_type_options = get_cck_field_options('node','field_connector_type','vehicle');
+	unset($connector_type_options['_none']);
+	unset($connector_type_options['other']);
+	$p_config_less = variable_get("p_config_less_than", '');
+	$p_config_more = variable_get("p_config_more_than", '');
+	$ts_config_less = variable_get("ts_config_less_than", '');
+	$ts_config_more = variable_get("ts_config_more_than", '');
+	//build vehicle-search mapping between values and text of checkboxes elements 
+	$vmap = array(
+		'vehicle_type' => $vehicle_type_options,
+		'vehicle_range' => parse_options_array(variable_get('vr_config_options', array()),'mi'),
+		'connector_type' => $connector_type_options,
+		'price' => array('less_'.$p_config_less => '< ' . number_format($p_config_less) .'$') +  parse_options_array(variable_get('p_config_options', array()),'$') + array('more_'.$p_config_more => '> ' . number_format($p_config_more) .'$'),
+		'top_speed' => array('less_'.$ts_config_less => '< ' . number_format($ts_config_less) .'mph') +  parse_options_array(variable_get('ts_config_options', array()),'mph') + array('more_'.$ts_config_more => '> ' . number_format($ts_config_more) .'mph'),
+	);
+
+	$form['#attached']['js'] = array(
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/scripts/jquery-1.8.3.min.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/scripts/gettheme.js',		
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxcore.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxbuttons.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxscrollbar.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxpanel.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxtree.js',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/jqxcheckbox.js',
+		drupal_get_path('module', 'vehicle_search') . '/scripts/json2.js',
+		drupal_get_path('module', 'vehicle_search') . '/scripts/vehicle_search.js',
+	);
+
+	$form['#attached']['css'] = array(
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/styles/jqx.base.css',
+		drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/jqwidgets/styles/jqx.black.css',
+		drupal_get_path('module', 'vehicle_search') . '/css/vehicle_search.css',
+	);
+
+	$form['left_pane'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('leftpane_div')
+		),
+	);
+	
+	$form['left_pane']['main_conditions'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('conditions_div')
+		),
+    );
+
+	$form['left_pane']['additional_conditions'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('conditions_div')
+		),
+	);
+	
+	$form['right_pane'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('rightpane_div')
+		),
+	);
+	
+	$form['left_pane']['main_conditions']['title'] = array(
+		'#markup' => '<h4 style="color:black; border-bottom:solid 2px navy;">You Searched For</h4>',
+	);
+	
+	$form['left_pane']['main_conditions']['vehicle_type'] = array(
+		'#type' => 'checkboxes',
+		'#options' => array_intersect_key($vmap['vehicle_type'],$_SESSION['vs_vehicle_type']),
+		'#default_value' => array_keys($_SESSION['vs_vehicle_type']),
+		'#disabled' => True,
+		'#prefix' => '<div style="padding-bottom: 10px">Vehicle Type',
+		'#suffix' => '</div>',
+	);
+	
+	$form['left_pane']['main_conditions']['vehicle_range'] = array(
+		'#type' => 'checkboxes',
+		'#options' => array_intersect_key($vmap['vehicle_range'],$_SESSION['vs_vehicle_range']),
+		'#default_value' => array_keys($_SESSION['vs_vehicle_range']),
+		'#disabled' => True,
+		'#prefix' => '<div style="padding-bottom: 10px">Vehicle Range',
+		'#suffix' => '</div>',
+	);
+	
+	$form['left_pane']['main_conditions']['connector_type'] = array(
+		'#type' => 'checkboxes',
+		'#options' => array_intersect_key($vmap['connector_type'],$_SESSION['vs_connector_type']),
+		'#default_value' => array_keys($_SESSION['vs_connector_type']),
+		'#disabled' => True,
+		'#prefix' => '<div style="padding-bottom: 10px">Connector Type',
+		'#suffix' => '</div>',
+	);
+	
+	$form['left_pane']['additional_conditions']['title'] = array(
+		'#markup' => '<h4 style="color:black; border-bottom:solid 2px navy;">Narrow Your Search</h4>',
+	);
+	
+	$img_add_icon = drupal_get_path('module', 'vehicle_search') . '/icons/plus_icon.jpg';
+	
+	//Make / Model
+	$form['left_pane']['additional_conditions']['make_model'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('sub_additional_div')
+		),
+	);
+	
+	$form['left_pane']['additional_conditions']['make_model']['make_model_title'] = array(
+		'#markup' => '<h5 style="color:black;">Make / Model<img width=15 height=15 onclick="toggle_div(\'jqxTree\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img></h5>',
+	);
+	
+	//Vehicle Type
+	$form['left_pane']['additional_conditions']['vehicle_type'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('sub_additional_div')
+		),
+	);
+	
+	$form['left_pane']['additional_conditions']['vehicle_type']['vehicle_type_title'] = array(
+		'#markup' => '<h5 style="color:black;">Vehicle Type<img width=15 height=15 onclick="toggle_div(\'edit-vehicle-type-checkboxes\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img></h5>',
+	);
+	
+	
+	//Vehicle Range
+	$form['left_pane']['additional_conditions']['vehicle_range'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('sub_additional_div')
+		),
+	);
+	
+	$form['left_pane']['additional_conditions']['vehicle_range']['vehicle_range_title'] = array(
+		'#markup' => '<h5 style="color:black;">Vehicle Range<img width=15 height=15 onclick="toggle_div(\'edit-vehicle-range-checkboxes\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img></h5>',
+	);
+	
+	
+	//Connector Type / Charging Type
+	$form['left_pane']['additional_conditions']['connector_type'] = array(
+			'#type' => 'container',
+			'#attributes' => array(
+				'class' => array('sub_additional_div')
+			),
+	);
+	
+	$form['left_pane']['additional_conditions']['connector_type']['connector_type_title'] = array(
+			'#markup' => '<h5 style="color:black; line-height:1.5em;">Connector Type / <img width=15 height=15 onclick="toggle_div(\'edit-connector-type-checkboxes\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img>Charging Type</h5>',
+	);
+	
+	//Price
+	$form['left_pane']['additional_conditions']['price'] = array(
+			'#type' => 'container',
+			'#attributes' => array(
+				'class' => array('sub_additional_div')
+			),
+	);
+	
+	$form['left_pane']['additional_conditions']['price']['price_title'] = array(
+			'#markup' => '<h5 style="color:black;">Price<img width=15 height=15 onclick="toggle_div(\'edit-price-checkboxes\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img></h5>',
+	);
+	
+	//Top Speed
+	$form['left_pane']['additional_conditions']['top_speed'] = array(
+		'#type' => 'container',
+		'#attributes' => array(
+			'class' => array('sub_additional_div')
+		),
+	);
+	
+	$form['left_pane']['additional_conditions']['top_speed']['top_speed_title'] = array(
+		'#markup' => '<h5 style="color:black;">Top Speed<img width=15 height=15 onclick="toggle_div(\'edit-top-speed-checkboxes\')" style="cursor:pointer; float:right;" src="'. $img_add_icon .'"></img></h5>',
+	);
+		
+	$form['left_pane']['additional_conditions']['vehicle_type']['vehicle_type_checkboxes'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $vmap['vehicle_type'],
+		'#default_value' => $_SESSION['vs_vehicle_type'],
+	); 
+	
+	$form['left_pane']['additional_conditions']['vehicle_range']['vehicle_range_checkboxes'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $vmap['vehicle_range'],
+		'#default_value' => $_SESSION['vs_vehicle_range'],
+	);
+
+	$form['left_pane']['additional_conditions']['connector_type']['connector_type_checkboxes'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $vmap['connector_type'],
+		'#default_value' => $_SESSION['vs_connector_type'],
+	);
+	
+	$form['left_pane']['additional_conditions']['price']['price_checkboxes'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $vmap['price'],
+		'#default_value' => $_SESSION['vs_price'],
+	);
+	
+	$form['left_pane']['additional_conditions']['top_speed']['top_speed_checkboxes'] = array(
+		'#type' => 'checkboxes',
+		'#options' => $vmap['top_speed'],
+		'#default_value' => $_SESSION['vs_top_speed'],
+	);
+	
+	//Display make & model tree on the left pane
+	$stored_make_model_arr = $_SESSION["vs_make_model"];
+	
+	$model_make_str = "<div id='jqxTree' style='float: left; margin-left: 20px;'>
+					 	<ul>";
+	$makes = get_vehicle_makes();
+
+	foreach($makes as $make_id => $make_name) {
+		$model_make_str .= '<li';
+		if(isset($stored_make_model_arr[$make_id]) && count($stored_make_model_arr[$make_id]['models']) == 0)
+			$model_make_str .= ' item-checked="true"';
+		$model_make_str .= ' id="'  .$make_id . '">' . $make_name;
+		$models = get_vehicle_models_by_make($make_id);
+		
+		if(count($models)>0) {
+			$model_make_str .= '<ul>';
+			foreach($models as $model_id => $model_name) {
+				$model_make_str .= '<li';
+				
+				if(isset($stored_make_model_arr[$make_id]['models'][$model_id]))
+					$model_make_str .= ' item-checked="true"';
+				
+				$model_make_str .= ' id="' . $model_id . '">' . $model_name . '</li>';
+			}
+			$model_make_str .= '</ul>';
+		}
+		
+		$model_make_str .= '</li>';
+	}
+	
+	$model_make_str .= "	</ul>
+						</div>";
+	
+	
+	$form['left_pane']['additional_conditions']['make_model']['make_model_checkboxes'] = array(
+		'#markup' => $model_make_str,
+	);
+		
+	$form['left_pane']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+	);
+	
+	//store make model values into hidden element under json string
+	$default_data = '[';
+	$first = true; //ensure no trailing comma
+	foreach($stored_make_model_arr as $make_key => $make) {
+		if (!$first)
+			$default_data .= ',';
+		$default_data .= $make_key;
+		$first = false;
+		foreach($make['models'] as $model_key => $model_name){
+			if (!$first)
+				$default_data .= ',';
+			$default_data .= $model_key;
+		}
+	}
+	$default_data .= ']';
+	
+	$form['make_model_hid'] = array(
+		'#type' => 'hidden',
+		'#default_value' => $default_data,
+		'#attributes' => array('autocomplete'=>'off'),
+	);
+	
+// 	if(isset($_SESSION['search_flag'])) 
+	{
+		// Table header
+		$header = array(
+					array('data' => 'Image', 'width' => '150px', 'class' => 'v_header'),
+					array('data' => 'Make / Model', 'width' => '100px', 'class' => 'v_header'),
+					array('data' => 'Drivetrain', 'width' => '50px', 'class' => 'v_header'),
+					array('data' => 'Description', 'width' => '250px', 'class' => 'v_header'),
+					array('data' => 'Top Speed', 'width' => '50px', 'class' => 'v_header'),
+					array('data' => 'Range', 'width' => '50px', 'class' => 'v_header'),
+					array('data' => 'Price', 'width' => '100px', 'class' => 'v_header'),
+				  );
+		
+		$rows = get_search_results();
+		
+		$output = theme_table(
+			array(
+					'header' => $header,
+					'rows' => $rows,
+					'attributes' => array('id'=>'search_results_tbl'),
+			)
+		).theme('pager');
+		
+		$form['right_pane']['results'] = array(
+			'#markup' => $output,
+		);
+	}
+	
+	if(count($form_state['input'])==0 || isset($_SESSION["search_clear_flag"]))
+		session_unset();
+	
+	return $form;
+}
+
+function get_image_link($node) {
+	$src = file_create_url('public://800px-No_Image_Wide.svg_.png');
+	if(isset($node->field_images['und'][0]))
+		$src = file_create_url($node->field_images['und'][0]['uri']);
+
+	return '<img height="60px" width="120px" src="' . $src . '"/>';
+}
+
+function shorten($str, $length) {
+	if($length < strlen($str))
+		return substr($str,0,$length) . '...';
+	return $str;
+}
+
+function get_search_results() {	
+	$results = array();
+	$make_mode_cond = $_SESSION["vs_make_model"];
+	$vehicle_type_cond = $_SESSION['vs_vehicle_type'];
+	$vehicle_range_cond = $_SESSION['vs_vehicle_range'];
+	$connector_type_cond = $_SESSION['vs_connector_type'];
+	$price_cond = $_SESSION['vs_price'];
+	$top_speed_cond = $_SESSION['vs_top_speed'];
+	$vehicle_class = $_SESSION['vs_vehicle_class'];
+	$nodes = node_load_multiple(array(), array('type' => 'vehicle'));
+	$nodes = filter_make_mode($nodes, $make_mode_cond);
+	$nodes = filter_vehicle_type($nodes, $vehicle_type_cond);
+	$nodes = filter_vehicle_range($nodes, $vehicle_range_cond);
+	$nodes = filter_vehicle_connector_type($nodes, $connector_type_cond);
+	$nodes = filter_vehicle_price($nodes, $price_cond);
+	$nodes = filter_vehicle_top_speed($nodes, $top_speed_cond);
+	$nodes = filter_vehicle_class($nodes, $vehicle_class);
+	foreach($nodes as $node) {
+		if (isset($node->field_msrp_price['und'][0]['value']))
+			$price = number_format($node->field_msrp_price['und'][0]['value'])  . '$';
+		else
+			$price = 'TBA';
+		
+		if (isset($node->field_top_speed['und'][0]['value']))
+			$top_speed = number_format($node->field_top_speed['und'][0]['value'])  . 'mph';
+		else
+			$top_speed = 'TBA';
+		
+		if (isset($node->field_battery_range['und'][0]['value']))
+			$battery_range = number_format($node->field_battery_range['und'][0]['value'])  . 'mi';
+		else
+			$battery_range = 'TBA';
+
+		$results[] = array(
+						'data' => array (
+									array('data' => get_image_link($node), 'class' => 'v_cell',),
+									array('data' => $node->title, 'class' => 'v_cell',),
+									array('data' => get_cck_field_option_value('node','field_type','vehicle',$node->field_type['und'][0]['value']), 'class' => 'v_cell',),
+									array('data' => shorten($node->body['und'][0]['value'],100), 'style' => 'font-size: 11px'),
+									array('data' => $top_speed, 'class' => 'v_cell',),
+									array('data' => $battery_range, 'class' => 'v_cell',),
+									array('data' => $price, 'class' => 'v_cell',),
+								  ),
+						'class' => array('ev_hoverable'),
+						'onclick' => 'vehicle_link_clicked("' . 'http://' .$_SERVER['HTTP_HOST'] . base_path() . drupal_lookup_path('alias',"node/".$node->nid) . '")',
+					 );
+	}
+	return $results;
+}
+
+function filter_make_mode($nodes, $make_mode_cond) {
+	if(count($make_mode_cond)==0)
+		return $nodes;
+	$ret = array();
+	foreach($nodes as $node)
+		foreach ($make_mode_cond as $make)
+		{
+			if($node->field_make['und'][0]['value'] == $make['name']){
+				if(in_array($node->field_model['und'][0]['value'], $make['models'])) {
+					$ret[] = $node;
+					break;
+				}
+			}
+		}
+	return $ret;
+}
+
+function filter_vehicle_class($nodes, $vehicle_class) {
+	if(count($vehicle_class)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node)
+	if(in_array($node->field_class['und'][0]['value'], $vehicle_class))
+		$ret[] = $node;
+
+	return $ret;
+}
+
+function filter_vehicle_type($nodes, $vehicle_type_cond) {
+	if(count($vehicle_type_cond)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node)
+		if(in_array($node->field_type['und'][0]['value'], $vehicle_type_cond))
+			$ret[] = $node;
+
+	return $ret;
+}
+
+function filter_vehicle_connector_type($nodes, $vehicle_connector_type_cond) {
+	if(count($vehicle_connector_type_cond)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node)
+	if(in_array($node->field_connector_type['und'][0]['value'], $vehicle_connector_type_cond))
+		$ret[] = $node;
+
+	return $ret;
+}
+
+function filter_vehicle_range($nodes, $vehicle_range_cond) {
+	if(count($vehicle_range_cond)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node) {
+		if($node->field_type['und'][0]['value']!='')
+			foreach($vehicle_range_cond as $vehicle_range) {
+				$vehicle_range_arr = explode('_',$vehicle_range);
+				$begin = $vehicle_range_arr[0];
+				$end = $vehicle_range_arr[1];
+				if($node->field_battery_range['und'][0]['value'] >= $begin && $node->field_battery_range['und'][0]['value'] <= $end){
+					$ret[] = $node;
+					break;
+				}
+			}
+	}
+	return $ret;
+}
+
+function filter_vehicle_price($nodes, $vehicle_price_cond) {
+	if(count($vehicle_price_cond)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node) {
+		if($node->field_msrp_price['und'][0]['value']!='')
+		foreach($vehicle_price_cond as $vehicle_price) {
+			$vehicle_price_arr = explode('_',$vehicle_price);
+			$begin = $vehicle_price_arr[0];
+			$end = $vehicle_price_arr[1];
+			if($begin == 'less' && $node->field_msrp_price['und'][0]['value']<$end){
+				$ret[] = $node;
+				break;
+			}
+			if($begin == 'more' && $node->field_msrp_price['und'][0]['value']>$end){
+				$ret[] = $node;
+				break;
+			}
+			if($node->field_msrp_price['und'][0]['value'] >= $begin && $node->field_msrp_price['und'][0]['value'] <= $end){
+				$ret[] = $node;
+				break;
+			}
+		}
+	}
+	return $ret;
+}
+
+function filter_vehicle_top_speed($nodes, $vehicle_top_speed_cond) {
+	if(count($vehicle_top_speed_cond)==0)
+		return $nodes;
+
+	$ret = array();
+	foreach($nodes as $node) {
+		if($node->field_top_speed['und'][0]['value']!='')
+			foreach($vehicle_top_speed_cond as $vehicle_top_speed) {
+				$vehicle_top_speed_arr = explode('_',$vehicle_top_speed);
+				$begin = $vehicle_top_speed_arr[0];
+				$end = $vehicle_top_speed_arr[1];
+				if($begin == 'less' && $node->field_top_speed['und'][0]['value']<$end){
+					$ret[] = $node;
+					break;
+				}
+				if($begin == 'more' && $node->field_top_speed['und'][0]['value']>$end){
+					$ret[] = $node;
+					break;
+				}
+				if($node->field_top_speed['und'][0]['value'] >= $begin && $node->field_top_speed['und'][0]['value'] <= $end){
+					$ret[] = $node;
+					break;
+				}
+			}
+	}
+	return $ret;
+}
+
+function get_vehicle_makes() {
+	$voc = taxonomy_vocabulary_machine_name_load('vehicle');
+	$tree = taxonomy_get_tree($voc->vid);
+	$arr = array();
+	foreach ($tree as $term){
+		if($term->depth == 0)
+			$arr[$term->tid] = $term->name;
+	}
+	return $arr;
+}
+
+function get_vehicle_models_by_make($make_id) {
+	$voc = taxonomy_vocabulary_machine_name_load('vehicle');
+	$tree = taxonomy_get_tree($voc->vid);
+	$found = False;
+	foreach($tree as $term) {
+		if($term->depth == 0 && $term->tid == $make_id) { //make
+			$tid = $term->tid;
+			$found = True;
+			break;
+		}
+	}
+	
+	$arr = array();
+	if($found)
+		foreach($tree as $term) {
+			if($term->depth == 1 && in_array($tid, $term->parents)) { //model
+				$arr[$term->tid] = $term->name;
+			}
+		}
+	return $arr;
+}
+
+//submit function for searching
+function vehicle_advanced_search_submit($form, &$form_state) {
+	
+	$make_models_raw_arr = json_decode($form_state['values']['make_model_hid']);
+	$all_makes = get_vehicle_makes();
+	$model_make_arr = array();
+	
+	foreach($all_makes as $make_key => $make) {
+			if(in_array($make_key, $make_models_raw_arr)) {
+				$models = get_vehicle_models_by_make($make_key);
+				$model_arr = array();
+				foreach($models as $model_key => $model) {
+					if(in_array($model_key,$make_models_raw_arr))
+						$model_arr[$model_key] = $model;
+				}
+				$model_make_arr[$make_key] = array('name' => $make, 'models' => $model_arr);
+			}
+	}
+// 	$_SESSION['search_flag'] = true;
+	$_SESSION["vs_make_model"] = $model_make_arr;
+	$_SESSION['vs_vehicle_type'] = get_checkboxes_values($form_state['values']['vehicle_type_checkboxes']);
+	$_SESSION['vs_vehicle_range'] = get_checkboxes_values($form_state['values']['vehicle_range_checkboxes']);
+	$_SESSION['vs_connector_type'] = get_checkboxes_values($form_state['values']['connector_type_checkboxes']);
+	$_SESSION['vs_price'] = get_checkboxes_values($form_state['values']['price_checkboxes']);
+	$_SESSION['vs_top_speed'] = get_checkboxes_values($form_state['values']['top_speed_checkboxes']);
+}
+
+function get_checkboxes_values($arr) {
+	$ret = array();
+	foreach ($arr as $key => $value)
+		if($value !== 0)
+			$ret[$key] = $value;
+	
+	return $ret;
+}
+
+function compute_make_default_value($nid){
+	if($nid) {
+		$all_vehicles = get_vehicle_makes();
+		$node = node_load($nid);
+		$make = $node->field_make['und'][0]['value'];
+		foreach($all_vehicles as $key => $value){
+			if($value == $make)
+				return $key;
+		}
+	}
+	return '_none';
+}
+
+function compute_model_default_value($nid){
+	if($nid) {
+		$node = node_load($nid);
+		$make = $node->field_make['und'][0]['value'];
+		$model = $node->field_model['und'][0]['value'];
+		$all_vehicles = get_vehicle_makes();
+		foreach($all_vehicles as $key => $value){
+			if($value == $make) {
+				$models = get_vehicle_models_by_make($key);
+				foreach($models as $model_key => $model_value) {
+					if($model_value == $model){
+						return $model_key;
+					}
+				}
+				break;
+			}
+		}
+	}
+	return '_none';
+}
+
+//doing vehicle form alter
+function vehicle_search_form_vehicle_node_form_alter(&$form, $form_state, $form_id) {
+	unset($form['title']);
+	$form['#attached']['js'] = array(
+			drupal_get_path('module', 'vehicle_search') . '/libs/jqwidgets-ver2.8/scripts/jquery-1.8.3.min.js',
+			drupal_get_path('module', 'vehicle_search') . '/scripts/vehicle-edit.js',
+	);
+	$form['actions']['submit']['#validate'] = array('cck_other_option_validate');
+	
+	//if other value appears in dropdown list box, choose it from dropdown list box
+	$class_other_text = trim(strtolower($form['field_class']['und'][0]['select_other_text_input']['#default_value']));
+	if(get_cck_field_option_value('node','field_class','vehicle', $class_other_text) != '')
+		$form['field_class']['und'][0]['select_other_list']['#default_value'] = $class_other_text;
+
+	
+	$type_other_text = trim(strtolower($form['field_type']['und'][0]['select_other_text_input']['#default_value']));
+	if(get_cck_field_option_value('node','field_type','vehicle', $type_other_text) != '')
+		$form['field_type']['und'][0]['select_other_list']['#default_value'] = $type_other_text;
+	
+	
+	$connector_type_other_text = trim(strtolower($form['field_connector_type']['und'][0]['select_other_text_input']['#default_value']));
+	if(get_cck_field_option_value('node','field_connector_type','vehicle', $connector_type_other_text) != '')
+		$form['field_connector_type']['und'][0]['select_other_list']['#default_value'] = $connector_type_other_text;
+	
+	$form['field_make']['und'][0]['select_other_list']['#options'] = array('_none' => '- None -');
+	
+	$all_vehicles = get_vehicle_makes();
+	$form['field_make']['und'][0]['select_other_list']['#options'] += ($all_vehicles + array('other' => 'Other'));
+	$form['field_make']['und'][0]['select_other_list']['#default_value'] = compute_make_default_value($form['nid']['#value']);
+	$form['field_make']['und'][0]['select_other_list']['#ajax'] = array(
+		'callback' => 'ajax_models_callback', 
+		'wrapper' => 'field-model-und-0-wrapper',
+		'effect' => 'slide',
+	);
+	
+	$form['field_model']['und'][0]['select_other_list']['#options'] = compute_model_options($form_state['values']['field_make']['und'][0]['select_other_list']);
+	$form['select_other_hidden'] = array(
+		'#type' => 'hidden',
+		'#default_value'=> compute_model_default_value($form['nid']['#value']),
+		'#attributes' => array('autocomplete'=>'off'),
+	);
+}
+
+function cck_other_option_validate($form, &$form_state) {
+	if(form_get_errors())
+		return;
+	$lang = $form_state['values']['language'];
+	$regex_str = '/[^a-zA-Z0-9\ \:\-\_\%]/';
+	$error = False;
+	
+	$bool_add_new_make_option = False;
+	$bool_add_new_model_option = False;
+	$bool_add_new_class_option = False;
+	$bool_add_new_type_option = False;
+	$bool_add_new_connector_type_option = False;
+
+	{
+		if($form_state['values']['field_make'][$lang][0]['select_other_list'] == '_none') {
+			form_set_error('field_make','A non-empty value is required for Make option.');
+			$error = True;
+		}
+	}
+	
+	//add new Make option
+	{
+		$select_val  = $form_state['values']['field_make'][$lang][0]['select_other_list'];
+		$make_other_text = $form_state['values']['field_make'][$lang][0]['select_other_text_input'];
+		$make_other_text_key = trim(strtolower($make_other_text));
+		if($select_val == 'other') {
+			$bool_add_new_make_option = True;
+			$all_makes = get_vehicle_makes();
+			foreach($all_makes as $makes)
+				if($make_other_text_key == trim(strtolower($makes))) {
+					form_set_error('field_make','Make value already exists.');
+					$error = True;
+					break;
+				}
+		}
+	}
+	
+	//add new Model option
+	{
+		$select_make_val = $form_state['values']['field_make'][$lang][0]['select_other_list'];
+		$select_model_val = $form_state['values']['field_model'][$lang][0]['select_other_list'];
+		$model_other_text = $form_state['values']['field_model'][$lang][0]['select_other_text_input'];
+		if($select_model_val == 'other') {
+			$bool_add_new_model_option = True;
+			if($select_make_val != 'other') {
+				$models = get_vehicle_models_by_make($select_make_val);
+				foreach($models as $model) {
+					if(trim(strtolower($model)) == trim(strtolower($model_other_text))){
+						form_set_error('field_model','The vehicle\'s brand name already contains your typed-in Model.');
+						$error = True;
+						break;
+					}
+				}
+			}
+		}
+	}
+	
+	//add new Class option
+	{
+		$select_val  = $form_state['values']['field_class'][$lang][0]['select_other_list'];
+		$class_other_text = $form_state['values']['field_class'][$lang][0]['select_other_text_input'];
+		$class_other_text_key = trim(strtolower($class_other_text));
+		if($select_val == 'other') {
+			$bool_add_new_class_option = true;
+			if(trim($class_other_text) == '' || preg_match($regex_str,$class_other_text) ||
+			   get_cck_field_option_value('node','field_class','vehicle',$class_other_text_key) != ''){
+				//if we find any invalid character
+				form_set_error('field_class','Invalid Class value. Check if it is empty, contains invalid characters or already exists.');
+				$error = True;
+			}
+		}
+	}
+	
+	//add new Type option
+	{
+		$select_val = $form_state['values']['field_type'][$lang][0]['select_other_list'];
+		$type_other_text = $form_state['values']['field_type'][$lang][0]['select_other_text_input'];
+		$type_other_text_key = trim(strtolower($type_other_text));
+		if($select_val == 'other') {
+			$bool_add_new_type_option = true;
+			if(trim($type_other_text) == '' || preg_match($regex_str,$type_other_text) ||
+			   get_cck_field_option_value('node','field_type','vehicle',$type_other_text_key) != ''){
+				//if we find any invalid character
+				form_set_error('field_type','Invalid Type value. Check if it is empty, contains invalid characters or already exists.');
+				$error = True;
+			}
+		}
+	}
+	
+	//add new Connector Type option
+	{
+		$select_val  = $form_state['values']['field_connector_type'][$lang][0]['select_other_list'];
+		$connector_type_other_text = $form_state['values']['field_connector_type'][$lang][0]['select_other_text_input'];
+		$connector_type_other_text_key = trim(strtolower($connector_type_other_text));
+		if($select_val == 'other') {
+			$bool_add_new_connector_type_option = True;
+			if(trim($connector_type_other_text) == '' || preg_match($regex_str,$connector_type_other_text) ||
+			   get_cck_field_option_value('node','field_connector_type','vehicle',$connector_type_other_text_key) != ''){
+				//if we find any invalid character
+				form_set_error('field_connector_type','Invalid Connector Type value. Check if it is empty, contains invalid characters or already exists.');
+				$error = True;
+			}
+		}
+	}
+	
+	if(!$error){
+		if($bool_add_new_class_option) {
+			add_new_option('node','field_class','vehicle',$class_other_text_key,$class_other_text);
+			drupal_set_message('Field Class has a new option.');
+		}
+		if($bool_add_new_type_option) {
+			add_new_option('node','field_type','vehicle',$type_other_text_key,$type_other_text);
+			drupal_set_message('Field Type has a new option.');
+		}
+		if($bool_add_new_connector_type_option) {
+			add_new_option('node','field_connector_type','vehicle',$connector_type_other_text_key,$connector_type_other_text);
+			drupal_set_message('Field Connector Type has a new option.');
+		}
+		
+		
+		if($bool_add_new_make_option) {
+			$term = new stdClass();
+			$term->name = $make_other_text;
+			// Get the vocabulary ID.
+			$vid = db_query("SELECT vid FROM {taxonomy_vocabulary} WHERE machine_name = 'vehicle'")->fetchField();
+			$term->vid = $vid;
+			taxonomy_term_save($term);
+			drupal_set_message('New Make taxonomy term has been created.');
+			$select_make_val = $term->tid;
+		}
+		
+		if($bool_add_new_model_option) {
+			$term = new stdClass();
+			$term->name = $model_other_text;
+			// Get the vocabulary ID.
+			$vid = db_query("SELECT vid FROM {taxonomy_vocabulary} WHERE machine_name = 'vehicle'")->fetchField();
+			$term->vid = $vid;
+			$term->parent = array($select_make_val);
+			taxonomy_term_save($term);
+			drupal_set_message('New Model taxonomy term has been created.');
+		}
+	}
+}
+
+function compute_model_options($make_id) {
+	$model_options = array('_none' => '- None -');
+	if(!empty($make_id))
+		$model_options += get_vehicle_models_by_make($make_id);
+	$model_options += array ('other' => 'Other');
+	
+	return $model_options;
+}
+
+function ajax_models_callback(&$form, &$form_state) {
+	return $form['field_model']['und'][0];
+}
+
+function vehicle_search_node_presave($node) {
+	if($node->type=='vehicle'){
+		if(isset($node->field_class['und'][0]['value']))
+			$node->field_class['und'][0]['value'] = strtolower($node->field_class['und'][0]['value']);
+		if(isset($node->field_type['und'][0]['value']))
+			$node->field_type['und'][0]['value'] = strtolower($node->field_type['und'][0]['value']);
+		if(isset($node->field_connector_type['und'][0]['value']))
+			$node->field_connector_type['und'][0]['value'] = strtolower($node->field_connector_type['und'][0]['value']);
+		$make_term = taxonomy_term_load($node->field_make['und'][0]['value']);
+		if($make_term)
+			$node->field_make['und'][0]['value'] = $make_term->name;
+		
+		$model_term = taxonomy_term_load($node->field_model['und'][0]['value']);
+		if($model_term)
+			$node->field_model['und'][0]['value'] = $model_term->name;
+		$node->title = $node->field_make['und'][0]['value'] . ' - ' . $node->field_model['und'][0]['value'];
+	}
+}
+
+function get_cck_field_options($entity_type, $field, $content_type) {
+	$cck_field = field_read_instance($entity_type,$field,$content_type);
+	$options = cck_select_other_options($cck_field);
+	return $options;
+}
+
+function get_cck_field_option_value($entity_type, $field, $content_type, $option_value) {
+	$cck_field = field_read_instance($entity_type,$field,$content_type);
+	$options = cck_select_other_options($cck_field);
+	return $options[$option_value];
+}
+
+function add_new_option($entity_type, $field, $content_type, $option_value, $option_text) {
+	$cck_field = field_read_instance($entity_type,$field,$content_type);
+	$old_options = $cck_field['widget']['settings']['select_list_options'];
+	$cck_field['widget']['settings']['select_list_options'] = $option_value . '|' . $option_text . chr(13) . chr(10) . $old_options;
+	_field_write_instance($cck_field, True);
+	field_cache_clear();
+}
+
+/*
+ * Implement hook_view to change display of vehicle node view page.
+ */
+function vehicle_search_node_view($node, $view_mode, $langcode) {
+	if($node->type=='vehicle') {
+		$class = get_cck_field_option_value('node','field_class','vehicle',$node->field_class[$node->language][0]['value']);
+		$type = get_cck_field_option_value('node','field_type','vehicle',$node->field_type[$node->language][0]['value']);
+		$connector_type = get_cck_field_option_value('node','field_connector_type','vehicle',$node->field_connector_type[$node->language][0]['value']);
+		$battery_size = $node->field_battery_size[$node->language][0]['value'];
+		$battery_range = $node->field_battery_range[$node->language][0]['value'];
+		$charging_rate = $node->field_charging_rate[$node->language][0]['value'];
+		$top_speed = $node->field_top_speed[$node->language][0]['value'];
+		$msrp_price = $node->field_msrp_price[$node->language][0]['value'];
+		$available_tax_credit = $node->field_available_tax_credit[$node->language][0]['value'];
+		if(isset($node->field_connector_type_description[$node->language][0]['value']))
+			$connector_type_des = ' ('.$node->field_connector_type_description[$node->language][0]['value'].')';
+		
+		$availability = '';
+		if(isset($node->field_availability[$node->language][0]['value'])) {
+			if($node->field_availability[$node->language][0]['value'] == 1)
+				$availability = 'Yes';
+		}
+		
+		$available_tax_credit_descr = ' ';
+		if(isset($node->field_available_tax_credit_descr[$node->language][0]['value']))
+			$available_tax_credit_descr = ' '.$node->field_available_tax_credit_descr[$node->language][0]['value'];
+		
+		$form = array();
+		
+		$form['#attached']['js'] = array(
+			drupal_get_path('module', 'vehicle_search') . '/libs/orbit-1.2.3/jquery-1.5.1.min.js',
+			drupal_get_path('module', 'vehicle_search') . '/libs/orbit-1.2.3/jquery.orbit-1.2.3.min.js',
+			drupal_get_path('module', 'vehicle_search') . '/scripts/vehicle-node-view.js',
+		);
+		
+		$form['#attached']['css'] = array(
+			drupal_get_path('module', 'vehicle_search') . '/libs/orbit-1.2.3/orbit-1.2.3.css',
+			drupal_get_path('module', 'vehicle_search') . '/css/vehicle_node_view.css',
+		);
+		
+		$img_str = '';
+		if(count($node->field_images[$node->language])==0)
+			$img_str = '<img height="250px" width="430px" src="' . file_create_url('public://800px-No_Image_Wide.svg_.png') . '"  alt="HTML Captions" />';
+		else
+			foreach($node->field_images[$node->language] as $img_file){
+				$src = file_create_url($img_file['uri']);
+				$img_str .= '<img height="250px" width="430px" src="' . $src . '"  alt="HTML Captions" />';
+			}
+		
+		
+		$form['ve_header'] = array(
+			'#type' => 'container',
+			'#attributes' => array(
+				'style' => 'display: table-cell',
+			),
+		);
+		
+		$form['ve_header']['vehicle_slide_show'] = array(
+			'#type' => 'markup',
+			'#markup' => '<div id="slide_show" style="display:inline-block; vertical-align:middle; padding-left:10px; padding-right:10px; padding-top:5px; padding-bottom:5px; background-color:#222222; border-radius: 5px 5px 5px 5px;">'.
+							'<div id="featured">'.
+								$img_str.
+						 	'</div>'.
+						'</div>',
+		);
+		
+		$form['ve_header']['vehicle_info'] = array(
+			'#type' => 'markup',
+			'#markup' => '<div class="vehicle-info" >' .
+							'<div class="inner-info">' .
+								'<span><b>Class:</b> '. $class .' </span><br/>'.
+				 				'<span><b>Type:</b> '. $type .' </span><br/>'.
+								'<span"><b>Battery Size:</b> '.($battery_size == '' ? '' : $battery_size . ' kWh Li-ion').'</span><br/>'.
+								'<span><b>Battery Range:</b> '. ($battery_range == '' ? '': 'approximately '.$battery_range.' miles') . '</span><br/>'.
+								'<span><b>Charging Rate:</b> '. ($charging_rate == '' ? '' : $charging_rate.' kW') . '</span><br/>'.
+								'<span><b>Top Speed:</b> '. ($top_speed == '' ? '' : $top_speed.' mph') . '</span><br/>'.
+								'<span><b>Connector Type:</b> '. ($connector_type == '' ? '' : $connector_type . $connector_type_des) .'</span><br/>'.
+								'<span><b>MSRP Price:</b> '. ($msrp_price == '' ? '' : number_format($msrp_price).'$') . '</span><br/>'.
+								'<span><b>Available Tax Credit:</b> '. ($available_tax_credit == '' ? '' : number_format($available_tax_credit).'$'. $available_tax_credit_descr) .'</span><br/>'.
+								'<span><b>Availability:</b> '. $availability .'</span><brp>'.
+						   '</div>'.
+						'</div>',
+		);
+		
+		
+		$form['vehicle_description'] = array(
+			'#type' => 'markup',
+			'#markup' => '<div class="vehicle-description"><b>Description</b><div style="margin-left:20px; margin-top:10px;">'. $node->body[$node->language][0]['value']  .'</div></div>',
+		);
+		$node->content = array();
+		$node->content['full_vehicle_page'] = array(
+			'#markup' => drupal_render($form),
+		);
+	}
+}
+
+
