@@ -19,7 +19,7 @@ The purpose of the Oregon Encyclopedia (OE) is to provide a free service to the 
 <br/>
 <b><i>@Solution: index all words from article content in the database; load all article ids to physical memory and filter them by user searching criteria; do the SQL query to match up the keywords from user input with content words indexed for a particular article</i></b>
 <br/>
-<b><i>@Complexity: O(n_articles * n_keywords * log(words_in_article))</i></b>
+<b><i>@Complexity: O(n_articles * n_keywords * log(n_words_in_article))</i></b>
 <h3>VCP Video Coding Project</h3><br/>
 The Regional Research Institute (RRI) is currently engaged in several research projects whose data is derived from scoring video based interviews. The methodology is sound; however, the process by which the scoring is done can be improved upon. This document outlines the ARC's proposed improvements for RRI's AMP project.
 ![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/vcp-frontpage.png "VCP front page")
