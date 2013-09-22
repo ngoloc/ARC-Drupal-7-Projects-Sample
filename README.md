@@ -25,7 +25,7 @@ The Regional Research Institute (RRI) is currently engaged in several research p
 ![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/vcp-frontpage.png "VCP front page")
 <br/>
 <br/>
-<b>Inside the code<b/>
+<b>Inside the code</b>
 Wrote the PHP code to upload and download videos in junk files. Used pupload plugin for HTML 5 upload.
 ![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/vcp-upload-download.png "VCP upload/download process")
 
