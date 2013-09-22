@@ -23,6 +23,11 @@ The purpose of the Oregon Encyclopedia (OE) is to provide a free service to the 
 <h3>VCP Video Coding Project</h3><br/>
 The Regional Research Institute (RRI) is currently engaged in several research projects whose data is derived from scoring video based interviews. The methodology is sound; however, the process by which the scoring is done can be improved upon. This document outlines the ARC's proposed improvements for RRI's AMP project.
 ![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/vcp-frontpage.png "VCP front page")
+<br/>
+<br/>
+<b>Inside the code<br/>
+Wrote the PHP code to upload and download videos in junk files. Used pupload plugin for HTML 5 upload.
+![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/vcp-upload-download.png "VCP upload/download process")
 
 <h3>EV Road Map</h3><br/>
 The goal of the EV Roadmap is to make people aware of Oregon's partnership with Portland General Electric, eTec, and Nissan North America to deploy up to 4,700 zero-emission electric vehicles and 11,210 charging systems. The EV Roadmap will also provide users with tools that can help them decide to buy into the electric vehicle revolution.
