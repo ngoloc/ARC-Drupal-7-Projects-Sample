@@ -32,3 +32,10 @@ Wrote the PHP code to upload and download videos in junk files. Used pupload plu
 <h3>EV Road Map</h3><br/>
 The goal of the EV Roadmap is to make people aware of Oregon's partnership with Portland General Electric, eTec, and Nissan North America to deploy up to 4,700 zero-emission electric vehicles and 11,210 charging systems. The EV Roadmap will also provide users with tools that can help them decide to buy into the electric vehicle revolution.
 ![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/evroadmap-frontpage.png "VCP front page")
+<br/>
+<br/>
+<b>Inside the code</b><br/>
+Implemented the advanced search
+![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/evroadmap-advanced-search.png "EV roadmap advanced search")
+Simple search <block> and vehicle display page
+![Alt text](https://raw.github.com/ngoloc/ARC-Drupal-7-Projects-Sample/master/projects-screenshots/evroadmap-simple-search+display.png "EV roadmap simple search & display")
